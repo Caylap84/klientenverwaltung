@@ -55,6 +55,16 @@ describe('ClientListPage', () => {
     expect(screen.getByText('Archiv X')).toBeInTheDocument()
   })
 
+  it('Status-Abzeichen zeigt deutsche Bezeichnungen in Großschreibung', async () => {
+    await createClient({ name: 'A', status: 'aktiv' })
+    await createClient({ name: 'P', status: 'pausiert' })
+    await createClient({ name: 'X', status: 'archiviert' })
+    renderList()
+    await userEvent.selectOptions(await screen.findByLabelText('Status'), 'alle')
+    const badges = [...document.querySelectorAll('.client-list .badge')].map((b) => b.textContent)
+    expect(badges).toEqual(['Aktiv', 'Pausiert', 'Archiviert'])
+  })
+
   it('"Neuer Klient" legt einen Klienten an und navigiert zum Profil', async () => {
     renderList()
     await userEvent.click(screen.getByRole('button', { name: 'Neuer Klient' }))

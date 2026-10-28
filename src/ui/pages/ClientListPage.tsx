@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, createClient } from '../../storage/repository'
 import type { Status } from '../../domain/types'
-import { clientDisplayName } from '../clientName'
+import { STATUS_LABELS, clientDisplayName } from '../clientName'
 
 type Filter = 'standard' | 'alle' | Status
 
@@ -65,7 +65,7 @@ export default function ClientListPage() {
             <li key={c.id}>
               <Link to={`/klienten/${c.id}`}>
                 <span className="client-name">{clientDisplayName(c)}</span>
-                <span className={`badge badge-${c.status}`}>{c.status}</span>
+                <span className={`badge badge-${c.status}`}>{STATUS_LABELS[c.status]}</span>
               </Link>
             </li>
           ))}

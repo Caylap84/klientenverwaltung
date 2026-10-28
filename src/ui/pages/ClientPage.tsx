@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../../storage/repository'
-import { clientDisplayName } from '../clientName'
+import { db, updateClient } from '../../storage/repository'
+import type { Status } from '../../domain/types'
+import { STATUS_LABELS, clientDisplayName } from '../clientName'
 import ProfileTab from '../client/ProfileTab'
 import ContractsTab from '../client/ContractsTab'
 import NotesTab from '../client/NotesTab'
@@ -32,6 +33,20 @@ export default function ClientPage() {
     <section>
       <p><Link to="/klienten">‹ Alle Klienten</Link></p>
       <h1>{clientDisplayName(client)}</h1>
+      <fieldset className="status client-status">
+        <legend>Status</legend>
+        {(Object.keys(STATUS_LABELS) as Status[]).map((s) => (
+          <label key={s} className="radio">
+            <input
+              type="radio"
+              name={`status-${client.id}`}
+              checked={client.status === s}
+              onChange={() => void updateClient(client.id, { status: s })}
+            />
+            {STATUS_LABELS[s]}
+          </label>
+        ))}
+      </fieldset>
       <div role="tablist" aria-label="Klientenbereiche" className="tabs">
         {TABS.map((t) => (
           <button

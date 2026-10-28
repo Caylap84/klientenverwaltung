@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { db, createClient } from '../../storage/repository'
@@ -22,11 +22,12 @@ async function renderProfile(id: string) {
 }
 
 describe('Klientenprofil', () => {
-  it('Statuswechsel auf pausiert wird gespeichert', async () => {
+  it('Stammdaten enthalten keine Status-Auswahl mehr (steht im Kopf der Klientenseite)', async () => {
     const id = await createClient({ name: 'Anna' })
     await renderProfile(id)
-    await userEvent.click(await screen.findByRole('radio', { name: 'Pausiert' }))
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.status).toBe('pausiert'))
+    const panel = await screen.findByRole('tabpanel')
+    await within(panel).findByLabelText('Name')
+    expect(within(panel).queryByRole('radio')).not.toBeInTheDocument()
   })
 
   it('Eingaben werden beim Verlassen des Feldes gespeichert', async () => {
