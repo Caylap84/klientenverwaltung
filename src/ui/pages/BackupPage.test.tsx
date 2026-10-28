@@ -271,6 +271,18 @@ describe('BackupPage', () => {
     })
   })
 
+  it('Sicherheitskopie wird beim Anzeigen nicht geladen (nur Schlüsselprüfung)', async () => {
+    await setMeta('safetyCopy', { marker: 'gross' })
+    const get = vi.spyOn(db.meta, 'get')
+    const bulkGet = vi.spyOn(db.meta, 'bulkGet')
+    const toArray = vi.spyOn(db.meta, 'toArray')
+    renderPage()
+    expect(await screen.findByRole('button', { name: 'Stand vor dem letzten Import wiederherstellen' })).toBeInTheDocument()
+    expect(get.mock.calls.map((c) => c[0])).not.toContain('safetyCopy')
+    expect(bulkGet).not.toHaveBeenCalled()
+    expect(toArray).not.toHaveBeenCalled()
+  })
+
   it('Export-Fehler wird auf Deutsch als Alert gezeigt', async () => {
     vi.spyOn(db.clients, 'toArray').mockRejectedValue(new Error('boom'))
     const user = userEvent.setup()

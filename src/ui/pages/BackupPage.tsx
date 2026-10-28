@@ -54,7 +54,8 @@ export default function BackupPage() {
     const v = (await db.meta.get('stateAt'))?.value
     return typeof v === 'string' ? v : null
   })
-  const hasSafetyCopy = useLiveQuery(async () => Boolean((await db.meta.get('safetyCopy'))?.value))
+  // Nur Schlüssel zählen: die Kopie selbst kann sehr groß sein und wird hier nie geladen.
+  const hasSafetyCopy = useLiveQuery(async () => (await db.meta.where('key').equals('safetyCopy').count()) > 0)
 
   function resetInput() {
     if (fileInput.current) fileInput.current.value = ''
