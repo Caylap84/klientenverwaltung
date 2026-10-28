@@ -66,7 +66,7 @@ export default function BackupPage() {
     try {
       const { fileName, blob } = await exportBackup()
       downloadFile(blob, fileName)
-      setMessage({ kind: 'status', text: `Sicherung gespeichert: ${fileName}` })
+      setMessage({ kind: 'status', text: `Download gestartet: ${fileName}. Bitte prüfe, ob die Datei angekommen ist.` })
     } catch {
       setMessage({ kind: 'alert', text: 'Export fehlgeschlagen. Es wurde keine Sicherung erstellt.' })
     } finally {
@@ -145,6 +145,24 @@ export default function BackupPage() {
         Exportieren erzeugt eine Datei, die du z. B. in deinem Cloud-Ordner ablegst. Auf dem anderen Gerät
         importierst du sie. Der Import ersetzt alle Daten auf diesem Gerät.
       </p>
+      <p className="notice warn">
+        <strong>
+          Die Sicherungsdatei ist nicht verschlüsselt und enthält alle Klientendaten im Klartext – lege sie nur in
+          einem Cloud-Ordner mit starkem Passwort und Zwei-Faktor-Anmeldung ab.
+        </strong>
+      </p>
+      <ul className="backup-help">
+        <li>
+          Android/Chrome: Die Datei landet im Ordner „Downloads“. Verschiebe sie von dort von Hand in deinen
+          Cloud-Ordner bzw. lade sie dort hoch.
+        </li>
+        <li>Windows: Folge der Download-Abfrage des Browsers bzw. der App und wähle dort den Cloud-Ordner.</li>
+        <li>Importieren: Wähle die Datei in der Dateiauswahl direkt aus deinem Cloud-Ordner.</li>
+        <li>
+          Mehrere Exporte am selben Tag bekommen einen Zusatz wie (1), (2). Prüfe vor dem Bestätigen eines
+          Imports Datum und Uhrzeit im Vergleich.
+        </li>
+      </ul>
 
       <div className="backup-status">
         {stateAt && <p>Stand dieses Geräts: {formatDateTime(stateAt)}</p>}
@@ -169,7 +187,7 @@ export default function BackupPage() {
           id="backup-file"
           ref={fileInput}
           type="file"
-          accept=".json,application/json"
+          accept=".json,application/json,text/plain,application/octet-stream"
           onChange={onPick}
           disabled={busy}
         />

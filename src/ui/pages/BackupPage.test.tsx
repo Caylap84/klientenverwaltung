@@ -63,7 +63,7 @@ describe('BackupPage', () => {
     renderPage()
     await screen.findByText(/Ungesicherte Änderungen/)
     await user.click(screen.getByRole('button', { name: 'Exportieren' }))
-    const ok = await screen.findByText(/^Sicherung gespeichert: /)
+    const ok = await screen.findByText(/^Download gestartet: klienten-sicherung-\d{4}-\d{2}-\d{2}\.json\. Bitte prüfe, ob die Datei angekommen ist\.$/)
     expect(downloads).toHaveLength(1)
     expect(downloads[0].name).toMatch(/^klienten-sicherung-\d{4}-\d{2}-\d{2}\.json$/)
     expect(ok).toHaveTextContent(downloads[0].name)
@@ -72,6 +72,20 @@ describe('BackupPage', () => {
     expect(screen.queryByText('Noch nie exportiert')).not.toBeInTheDocument()
     expect(screen.getByText(/^Letzter Export: \d{2}\.\d{2}\.\d{4}, \d{2}:\d{2} Uhr$/)).toBeInTheDocument()
     expect(await getMeta('dirty')).toBe(false)
+  })
+
+  it('Erklärung: Android-Downloads, Windows, Import aus dem Cloud-Ordner, Zusatz (1)/(2), Klartext-Hinweis', () => {
+    renderPage()
+    expect(screen.getByText(/Die Sicherungsdatei ist nicht verschlüsselt und enthält alle Klientendaten im Klartext – lege sie nur in einem Cloud-Ordner mit starkem Passwort und Zwei-Faktor-Anmeldung ab\./)).toBeInTheDocument()
+    expect(screen.getByText(/Android\/Chrome: Die Datei landet im Ordner „Downloads“/)).toBeInTheDocument()
+    expect(screen.getByText(/Windows: Folge der Download-Abfrage/)).toBeInTheDocument()
+    expect(screen.getByText(/Wähle die Datei in der Dateiauswahl direkt aus deinem Cloud-Ordner/)).toBeInTheDocument()
+    expect(screen.getByText(/einen Zusatz wie \(1\), \(2\)/)).toBeInTheDocument()
+  })
+
+  it('Dateiauswahl lässt auch Dateien aus Cloud-Apps zu (accept erweitert)', () => {
+    renderPage()
+    expect(input()).toHaveAttribute('accept', '.json,application/json,text/plain,application/octet-stream')
   })
 
   it('Hinweis erscheint live, sobald Daten geändert werden', async () => {
