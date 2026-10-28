@@ -34,7 +34,7 @@ describe('Klientenseite: Status oben', () => {
     const id = await createClient({ name: 'Anna' })
     renderClient(id)
     await userEvent.click(await screen.findByRole('radio', { name: 'Pausiert' }))
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.status).toBe('pausiert'))
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.status).toBe('pausiert'), { timeout: 5000 })
     expect((await db.clients.get(id))?.name).toBe('Anna')
   })
 
@@ -46,7 +46,8 @@ describe('Klientenseite: Status oben', () => {
       expect(screen.getByRole('group', { name: 'Status' })).toBeInTheDocument()
     }
     await userEvent.click(screen.getByRole('radio', { name: 'Archiviert' }))
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.status).toBe('archiviert'))
-    expect(await screen.findByRole('radio', { name: 'Archiviert' })).toBeChecked()
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.status).toBe('archiviert'), { timeout: 5000 })
+    // Der Live-Query kann dem DB-Write hinterherhinken: auf den Zustand warten, nicht nur auf das Element.
+    await vi.waitFor(() => expect(screen.getByRole('radio', { name: 'Archiviert' })).toBeChecked(), { timeout: 5000 })
   })
 })

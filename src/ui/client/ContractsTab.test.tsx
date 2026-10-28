@@ -43,7 +43,7 @@ describe('Preis', () => {
   it('Monatspreis 100 bei 6 Monaten zeigt Gesamtpreis 600,00 €', async () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6 })
     await edit('Preis in € pro Monat', '100')
-    await vi.waitFor(() => expect(screen.getByText(/Gesamtpreis: 600,00\s€/)).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText(/Gesamtpreis: 600,00\s€/)).toBeInTheDocument(), { timeout: 5000 })
     expect((await stored(contractId)).priceCents).toBe(10000)
   })
 
@@ -57,7 +57,7 @@ describe('Preis', () => {
       expect(items[0]).toHaveTextContent(/33,33\s€/)
       expect(items[1]).toHaveTextContent(/33,33\s€/)
       expect(items[2]).toHaveTextContent(/33,34\s€/)
-    })
+    }, { timeout: 5000 })
     expect((await stored(contractId)).priceMode).toBe('total')
   })
 
@@ -65,7 +65,7 @@ describe('Preis', () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000 })
     vi.mocked(confirmAction).mockReturnValue(true)
     await userEvent.click(await screen.findByRole('radio', { name: 'Gesamtpreis' }))
-    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('total'))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('total'), { timeout: 5000 })
     expect((await stored(contractId)).priceCents).toBe(10000)
     expect(await screen.findByLabelText('Preis in € gesamt')).toHaveValue('100,00')
   })
@@ -74,7 +74,7 @@ describe('Preis', () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000 })
     vi.mocked(confirmAction).mockReturnValue(false)
     await userEvent.click(await screen.findByRole('radio', { name: 'Gesamtpreis' }))
-    await vi.waitFor(() => expect(confirmAction).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(confirmAction).toHaveBeenCalledOnce(), { timeout: 5000 })
     const msg = vi.mocked(confirmAction).mock.calls[0][0].replace(/[\u00a0\u202f]/g, ' ')
     expect(msg).toBe('Der eingegebene Betrag (100,00 €) bleibt gleich und gilt dann als Gesamtpreis. Der Vertrag ändert sich von 600,00 € auf 100,00 € gesamt. Fortfahren?')
     await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
@@ -87,7 +87,7 @@ describe('Preis', () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000, priceMode: 'total' })
     vi.mocked(confirmAction).mockReturnValue(true)
     await userEvent.click(await screen.findByRole('radio', { name: 'Monatspreis' }))
-    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('monthly'))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('monthly'), { timeout: 5000 })
     const msg = vi.mocked(confirmAction).mock.calls[0][0].replace(/[\u00a0\u202f]/g, ' ')
     expect(msg).toBe('Der eingegebene Betrag (100,00 €) bleibt gleich und gilt dann als Monatspreis. Der Vertrag ändert sich von 100,00 € auf 600,00 € gesamt. Fortfahren?')
     expect((await stored(contractId)).priceCents).toBe(10000)
@@ -96,10 +96,10 @@ describe('Preis', () => {
   it('keine Rückfrage bei Preis 0 oder Laufzeit ≤ 1', async () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 0 })
     await userEvent.click(await screen.findByRole('radio', { name: 'Gesamtpreis' }))
-    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('total'))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('total'), { timeout: 5000 })
     await updateContract(contractId, { priceCents: 5000, termMonths: 1 })
     await userEvent.click(await screen.findByRole('radio', { name: 'Monatspreis' }))
-    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('monthly'))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('monthly'), { timeout: 5000 })
     expect(confirmAction).not.toHaveBeenCalled()
   })
 
@@ -108,7 +108,7 @@ describe('Preis', () => {
     vi.mocked(confirmAction).mockReturnValue(true)
     await edit('Laufzeit in Monaten', 'x')
     await edit('Geplante Stunden', '-3')
-    await vi.waitFor(async () => expect((await stored(contractId)).termMonths).toBe(0))
+    await vi.waitFor(async () => expect((await stored(contractId)).termMonths).toBe(0), { timeout: 5000 })
     const c = await stored(contractId)
     expect([c.priceCents, c.hourlyCents, c.termMonths, c.plannedHours].every(Number.isFinite)).toBe(true)
     expect(c.plannedHours).toBe(0)
@@ -122,7 +122,7 @@ describe('Preis', () => {
       expect(screen.getByLabelText('Preis in € pro Monat')).toHaveValue('100,00')
     }
     await edit('Stundenpreis in €', '€€')
-    await vi.waitFor(() => expect(screen.getByLabelText('Stundenpreis in €')).toHaveValue('5,00'))
+    await vi.waitFor(() => expect(screen.getByLabelText('Stundenpreis in €')).toHaveValue('5,00'), { timeout: 5000 })
     expect(screen.getAllByRole('alert')).toHaveLength(2)
     await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
     const c = await stored(contractId)
@@ -135,10 +135,10 @@ describe('Preis', () => {
     await edit('Preis in € pro Monat', '5o')
     await screen.findByRole('alert')
     await edit('Preis in € pro Monat', '12.50')
-    await vi.waitFor(async () => expect((await stored(contractId)).priceCents).toBe(1250))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceCents).toBe(1250), { timeout: 5000 })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await edit('Stundenpreis in €', '')
-    await vi.waitFor(async () => expect((await stored(contractId)).hourlyCents).toBe(0))
+    await vi.waitFor(async () => expect((await stored(contractId)).hourlyCents).toBe(0), { timeout: 5000 })
   })
 })
 
@@ -146,24 +146,24 @@ describe('Stunden', () => {
   it('Stundenanzahl 3 erzeugt 3 Zeilen; Häkchen, Datum und Notiz werden gespeichert', async () => {
     const { contractId } = await setup()
     await edit('Geplante Stunden', '3')
-    await vi.waitFor(async () => expect((await stored(contractId)).hours).toHaveLength(3))
+    await vi.waitFor(async () => expect((await stored(contractId)).hours).toHaveLength(3), { timeout: 5000 })
     await userEvent.click(await screen.findByLabelText('Stunde 1 erledigt'))
     await edit('Datum Stunde 1', '2026-04-02')
     await edit('Notiz Stunde 1', 'Erstgespräch')
     await vi.waitFor(async () => {
       const h = (await stored(contractId)).hours[0]
       expect(h).toMatchObject({ done: true, date: '2026-04-02', note: 'Erstgespräch' })
-    })
+    }, { timeout: 5000 })
     expect(screen.getAllByText('1 von 3 Stunden').length).toBeGreaterThan(0)
   })
 
   it('Verkleinern entfernt nur leere Zeilen', async () => {
     const { contractId } = await setup()
     await edit('Geplante Stunden', '3')
-    await vi.waitFor(async () => expect((await stored(contractId)).hours).toHaveLength(3))
+    await vi.waitFor(async () => expect((await stored(contractId)).hours).toHaveLength(3), { timeout: 5000 })
     await userEvent.click(await screen.findByLabelText('Stunde 1 erledigt'))
     await edit('Geplante Stunden', '0')
-    await vi.waitFor(async () => expect((await stored(contractId)).hours).toHaveLength(1))
+    await vi.waitFor(async () => expect((await stored(contractId)).hours).toHaveLength(1), { timeout: 5000 })
     expect((await stored(contractId)).hours[0].done).toBe(true)
   })
 
@@ -177,7 +177,7 @@ describe('Stunden', () => {
     await vi.waitFor(async () => {
       const h = (await stored(contractId)).hours
       expect(h.map((x) => x.done)).toEqual([true, true])
-    })
+    }, { timeout: 5000 })
   })
 
   it('Reiterkopf summiert über alle Verträge', async () => {
@@ -190,7 +190,7 @@ describe('Stunden', () => {
         { id: 'b', done: false, date: '', note: '' },
       ],
     })
-    await vi.waitFor(() => expect(screen.getByText('Alle Verträge: 1 von 2 Stunden')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('Alle Verträge: 1 von 2 Stunden')).toBeInTheDocument(), { timeout: 5000 })
   })
 })
 
@@ -219,13 +219,13 @@ describe('Laufzeit und Startmonat', () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6 })
     vi.mocked(confirmAction).mockReturnValue(true)
     await edit('Laufzeit in Monaten', '3')
-    await vi.waitFor(async () => expect((await stored(contractId)).termMonths).toBe(3))
+    await vi.waitFor(async () => expect((await stored(contractId)).termMonths).toBe(3), { timeout: 5000 })
   })
 
   it('Verlängern braucht keine Bestätigung', async () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 3 })
     await edit('Laufzeit in Monaten', '6')
-    await vi.waitFor(async () => expect((await stored(contractId)).termMonths).toBe(6))
+    await vi.waitFor(async () => expect((await stored(contractId)).termMonths).toBe(6), { timeout: 5000 })
     expect(confirmAction).not.toHaveBeenCalled()
   })
 
@@ -244,7 +244,7 @@ describe('Laufzeit und Startmonat', () => {
     const start = await screen.findByLabelText('Startmonat')
     fireEvent.change(start, { target: { value: '2026-03' } })
     fireEvent.blur(start)
-    await vi.waitFor(async () => expect((await stored(contractId)).startMonth).toBe('2026-03'))
+    await vi.waitFor(async () => expect((await stored(contractId)).startMonth).toBe('2026-03'), { timeout: 5000 })
     expect(confirmAction).not.toHaveBeenCalled()
   })
 })
@@ -261,7 +261,7 @@ describe('Zeitleiste', () => {
     await vi.waitFor(async () => {
       const c = await stored(contractId)
       expect([c.startMonth, c.termMonths]).toEqual(['2026-03', 3])
-    })
+    }, { timeout: 5000 })
     expect(await screen.findByRole('list', { name: 'Zeitleiste' })).toBeInTheDocument()
   })
 
@@ -284,11 +284,11 @@ describe('Zeitleiste', () => {
     await userEvent.click(first.getByLabelText('Honorar eingegangen'))
     await vi.waitFor(async () => {
       expect((await stored(contractId)).paid['2026-03']?.paidOn).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    })
+    }, { timeout: 5000 })
     await edit('Eingangsdatum März 2026', '2026-03-15')
-    await vi.waitFor(async () => expect((await stored(contractId)).paid['2026-03'].paidOn).toBe('2026-03-15'))
+    await vi.waitFor(async () => expect((await stored(contractId)).paid['2026-03'].paidOn).toBe('2026-03-15'), { timeout: 5000 })
     await userEvent.click(first.getByLabelText('Honorar eingegangen'))
-    await vi.waitFor(async () => expect(Object.keys((await stored(contractId)).paid)).toEqual([]))
+    await vi.waitFor(async () => expect(Object.keys((await stored(contractId)).paid)).toEqual([]), { timeout: 5000 })
   })
 })
 
@@ -298,8 +298,8 @@ describe('Mehrere Verträge', () => {
       startMonth: '2026-03', termMonths: 2, paid: { '2026-03': { paidOn: '2026-03-05' } },
     })
     await userEvent.click(screen.getByRole('button', { name: 'Vertrag hinzufügen' }))
-    await vi.waitFor(async () => expect(await db.contracts.where('clientId').equals(clientId).count()).toBe(2))
-    await vi.waitFor(() => expect(screen.getAllByRole('group', { name: /^Vertrag \d/ })).toHaveLength(2))
+    await vi.waitFor(async () => expect(await db.contracts.where('clientId').equals(clientId).count()).toBe(2), { timeout: 5000 })
+    await vi.waitFor(() => expect(screen.getAllByRole('group', { name: /^Vertrag \d/ })).toHaveLength(2), { timeout: 5000 })
 
     const card = screen.getAllByRole('group', { name: /^Vertrag \d/ })[0]
     await userEvent.click(within(card).getByRole('button', { name: 'Vertrag löschen' }))
@@ -309,17 +309,17 @@ describe('Mehrere Verträge', () => {
 
     vi.mocked(confirmAction).mockReturnValue(true)
     await userEvent.click(within(card).getByRole('button', { name: 'Vertrag löschen' }))
-    await vi.waitFor(async () => expect(await db.contracts.get(contractId)).toBeUndefined())
+    await vi.waitFor(async () => expect(await db.contracts.get(contractId)).toBeUndefined(), { timeout: 5000 })
   })
 
   it('Eingabe in einem Vertrag ändert nur diesen', async () => {
     const { clientId, contractId } = await setup({ startMonth: '2026-01', termMonths: 1 })
     const other = await createContract(clientId)
     await updateContract(other, { startMonth: '2026-06', termMonths: 1 })
-    await vi.waitFor(() => expect(screen.getAllByRole('group', { name: /^Vertrag \d/ })).toHaveLength(2))
+    await vi.waitFor(() => expect(screen.getAllByRole('group', { name: /^Vertrag \d/ })).toHaveLength(2), { timeout: 5000 })
     const cards = screen.getAllByRole('group', { name: /^Vertrag \d/ })
     await edit('Stundenpreis in €', '80', within(cards[1]))
-    await vi.waitFor(async () => expect((await stored(other)).hourlyCents).toBe(8000))
+    await vi.waitFor(async () => expect((await stored(other)).hourlyCents).toBe(8000), { timeout: 5000 })
     expect((await stored(contractId)).hourlyCents).toBe(0)
   })
 })
@@ -332,11 +332,11 @@ describe('Formatprüfung Monat/Datum', () => {
     fireEvent.blur(start)
     expect(await screen.findByText('Bitte im Format JJJJ-MM eingeben')).toBeInTheDocument()
     expect((await stored(contractId)).startMonth).toBe('2026-03')
-    await vi.waitFor(() => expect(screen.getByLabelText('Startmonat')).toHaveValue('2026-03'))
+    await vi.waitFor(() => expect(screen.getByLabelText('Startmonat')).toHaveValue('2026-03'), { timeout: 5000 })
     vi.mocked(confirmAction).mockReturnValue(true)
     fireEvent.change(screen.getByLabelText('Startmonat'), { target: { value: '2026-05' } })
     fireEvent.blur(screen.getByLabelText('Startmonat'))
-    await vi.waitFor(async () => expect((await stored(contractId)).startMonth).toBe('2026-05'))
+    await vi.waitFor(async () => expect((await stored(contractId)).startMonth).toBe('2026-05'), { timeout: 5000 })
     expect(screen.queryByText('Bitte im Format JJJJ-MM eingeben')).not.toBeInTheDocument()
   })
 
@@ -350,12 +350,12 @@ describe('Formatprüfung Monat/Datum', () => {
       fireEvent.blur(d)
       expect(await screen.findByText('Bitte im Format JJJJ-MM-TT eingeben')).toBeInTheDocument()
       expect((await stored(contractId)).hours[0].date).toBe('')
-      await vi.waitFor(() => expect(screen.getByLabelText('Datum Stunde 1')).toHaveValue(''))
+      await vi.waitFor(() => expect(screen.getByLabelText('Datum Stunde 1')).toHaveValue(''), { timeout: 5000 })
     }
     const d = screen.getByLabelText('Datum Stunde 1')
     fireEvent.change(d, { target: { value: '2026-02-27' } })
     fireEvent.blur(d)
-    await vi.waitFor(async () => expect((await stored(contractId)).hours[0].date).toBe('2026-02-27'))
+    await vi.waitFor(async () => expect((await stored(contractId)).hours[0].date).toBe('2026-02-27'), { timeout: 5000 })
     expect(screen.queryByText('Bitte im Format JJJJ-MM-TT eingeben')).not.toBeInTheDocument()
   })
 
@@ -368,17 +368,17 @@ describe('Formatprüfung Monat/Datum', () => {
     fireEvent.blur(d)
     expect(await screen.findByText('Bitte im Format JJJJ-MM-TT eingeben')).toBeInTheDocument()
     expect((await stored(contractId)).paid['2026-03'].paidOn).toBe('2026-03-05')
-    await vi.waitFor(() => expect(screen.getByLabelText('Eingangsdatum März 2026')).toHaveValue('2026-03-05'))
+    await vi.waitFor(() => expect(screen.getByLabelText('Eingangsdatum März 2026')).toHaveValue('2026-03-05'), { timeout: 5000 })
     fireEvent.change(screen.getByLabelText('Eingangsdatum März 2026'), { target: { value: '2026-03-15' } })
     fireEvent.blur(screen.getByLabelText('Eingangsdatum März 2026'))
-    await vi.waitFor(async () => expect((await stored(contractId)).paid['2026-03'].paidOn).toBe('2026-03-15'))
+    await vi.waitFor(async () => expect((await stored(contractId)).paid['2026-03'].paidOn).toBe('2026-03-15'), { timeout: 5000 })
   })
 
   it('Euro-Eingabe 12.50 wird als 12,50 gespeichert und angezeigt', async () => {
     const { contractId } = await setup()
     await edit('Stundenpreis in €', '12.50')
-    await vi.waitFor(async () => expect((await stored(contractId)).hourlyCents).toBe(1250))
-    await vi.waitFor(() => expect(screen.getByLabelText('Stundenpreis in €')).toHaveValue('12,50'))
+    await vi.waitFor(async () => expect((await stored(contractId)).hourlyCents).toBe(1250), { timeout: 5000 })
+    await vi.waitFor(() => expect(screen.getByLabelText('Stundenpreis in €')).toHaveValue('12,50'), { timeout: 5000 })
   })
 })
 

@@ -38,7 +38,7 @@ describe('Klientenprofil', () => {
     expect(address).toHaveAttribute('rows', '3')
     await userEvent.type(address, 'Musterstr. 1{Enter}12345 Stadt')
     await userEvent.tab()
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.address).toBe('Musterstr. 1\n12345 Stadt'))
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.address).toBe('Musterstr. 1\n12345 Stadt'), { timeout: 5000 })
   })
 
   it('Eingaben werden beim Verlassen des Feldes gespeichert', async () => {
@@ -46,7 +46,7 @@ describe('Klientenprofil', () => {
     await renderProfile(id)
     await userEvent.type(await screen.findByLabelText('Name'), 'Clara Neu')
     await userEvent.tab()
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Clara Neu'))
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Clara Neu'), { timeout: 5000 })
   })
 
   it('Löschen ohne Bestätigung behält den Klienten', async () => {

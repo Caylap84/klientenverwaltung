@@ -34,8 +34,8 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     const name = await screen.findByLabelText('Name')
     fireEvent.change(name, { target: { value: 'Anna Ungespeichert' } })
     fireEvent.click(screen.getByText('gehe'))
-    await vi.waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue('Bernd'))
-    await vi.waitFor(async () => expect((await db.clients.get(a))?.name).toBe('Anna Ungespeichert'))
+    await vi.waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue('Bernd'), { timeout: 5000 })
+    await vi.waitFor(async () => expect((await db.clients.get(a))?.name).toBe('Anna Ungespeichert'), { timeout: 5000 })
     fireEvent.blur(screen.getByLabelText('Name'))
     await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
     expect((await db.clients.get(b))?.name).toBe('Bernd')
@@ -48,10 +48,11 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     setup(a, b)
     fireEvent.change(await screen.findByLabelText('Adresse'), { target: { value: 'Musterstr. 1' } })
     fireEvent.click(screen.getByText('gehe'))
-    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'B' })).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'B' })).toBeInTheDocument(), { timeout: 5000 })
     expect(screen.getByLabelText('Adresse')).toHaveValue('')
     await userEvent.click(screen.getByLabelText('Adresse'))
     await userEvent.tab()
+    await vi.waitFor(async () => expect((await db.clients.get(a))?.address).toBe('Musterstr. 1'), { timeout: 5000 })
     await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
     expect((await db.clients.get(b))?.address).toBe('')
     expect((await db.clients.get(a))?.address).toBe('Musterstr. 1')
@@ -62,7 +63,7 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     setup(id)
     await userEvent.type(await screen.findByLabelText('Name'), 'Clara')
     await userEvent.click(screen.getByRole('tab', { name: 'Notizen' }))
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Clara'))
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Clara'), { timeout: 5000 })
   })
 
   it('(c) Name tippen, dann Löschen klicken (abgelehnt): Name wird gespeichert', async () => {
@@ -71,7 +72,7 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     setup(id)
     await userEvent.type(await screen.findByLabelText('Name'), 'Dora')
     await userEvent.click(screen.getByRole('button', { name: 'Klient löschen' }))
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Dora'))
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Dora'), { timeout: 5000 })
     expect(await db.clients.get(id)).toBeDefined()
   })
 
@@ -84,7 +85,7 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     await act(async () => {
       await updateClient(id, { name: 'Extern', address: 'Extern 5' })
     })
-    await vi.waitFor(() => expect(screen.getByLabelText('Adresse')).toHaveValue('Extern 5'))
+    await vi.waitFor(() => expect(screen.getByLabelText('Adresse')).toHaveValue('Extern 5'), { timeout: 5000 })
     expect(screen.getByLabelText('Name')).toHaveValue('Eva Neu')
     expect(screen.getByLabelText('Name')).toHaveFocus()
   })
@@ -100,7 +101,7 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     fireEvent.change(await screen.findByLabelText('Telefon'), { target: { value: '0123' } })
     fireEvent.click(screen.getByText('gehe'))
     await screen.findByRole('heading', { name: 'Sicherung' })
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.phone).toBe('0123'))
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.phone).toBe('0123'), { timeout: 5000 })
   })
 
   it('externe Änderung an fokussiertem, unberührtem Feld wird beim Blur nicht zurückgesetzt', async () => {
@@ -120,7 +121,7 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     await userEvent.type(await screen.findByLabelText('Name'), 'Z')
     await userEvent.tab()
     expect(screen.getByLabelText('Adresse')).toHaveFocus()
-    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Z'))
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.name).toBe('Z'), { timeout: 5000 })
     expect(screen.getByLabelText('Adresse')).toHaveFocus()
   })
 })

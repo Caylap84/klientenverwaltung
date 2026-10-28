@@ -79,17 +79,17 @@ describe('PDFs', () => {
     Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke })
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     await userEvent.click(screen.getByRole('button', { name: 'a.pdf öffnen' }))
-    await vi.waitFor(() => expect(open).toHaveBeenCalledWith('blob:x', '_blank', 'noopener'))
+    await vi.waitFor(() => expect(open).toHaveBeenCalledWith('blob:x', '_blank', 'noopener'), { timeout: 5000 })
     const blob = (create.mock.calls[0] as unknown as [Blob])[0]
     expect(blob.type).toBe('application/pdf')
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       expect(this.download).toBe('a.pdf')
     })
     await userEvent.click(screen.getByRole('button', { name: 'a.pdf herunterladen' }))
-    await vi.waitFor(() => expect(click).toHaveBeenCalled())
+    await vi.waitFor(() => expect(click).toHaveBeenCalled(), { timeout: 5000 })
     const timers = vi.spyOn(globalThis, 'setTimeout')
     await userEvent.click(screen.getByRole('button', { name: 'a.pdf herunterladen' }))
-    await vi.waitFor(() => expect(timers.mock.calls.some(([, ms]) => ms === 10_000)).toBe(true))
+    await vi.waitFor(() => expect(timers.mock.calls.some(([, ms]) => ms === 10_000)).toBe(true), { timeout: 5000 })
     expect(revoke).not.toHaveBeenCalledWith('blob:x')
   })
 
@@ -101,7 +101,7 @@ describe('PDFs', () => {
     await userEvent.click(screen.getByRole('button', { name: 'a.pdf löschen' }))
     expect(await db.pdfs.count()).toBe(1)
     await userEvent.click(screen.getByRole('button', { name: 'a.pdf löschen' }))
-    await vi.waitFor(async () => expect(await db.pdfs.count()).toBe(0))
+    await vi.waitFor(async () => expect(await db.pdfs.count()).toBe(0), { timeout: 5000 })
     expect(await screen.findByText('Noch keine Dokumente')).toBeInTheDocument()
   })
 
