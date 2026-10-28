@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deleteClient, updateClient } from '../../storage/repository'
 import type { Client, Status } from '../../domain/types'
@@ -12,6 +13,32 @@ const STATUS: { value: Status; label: string }[] = [
 
 type TextField = 'name' | 'address' | 'email' | 'phone'
 
+function TextField({ id, label, stored, onSave, type, autoComplete }: {
+  id: string; label: string; stored: string; onSave: (v: string) => void
+  type?: string; autoComplete?: string
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  const [value, setValue] = useState(stored)
+  // Externe Änderungen übernehmen, aber nie während der Eingabe im fokussierten Feld
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setValue(stored)
+  }, [stored])
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        ref={ref}
+        type={type}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => { if (value !== stored) onSave(value) }}
+      />
+    </div>
+  )
+}
+
 export default function ProfileTab({ client }: { client: Client }) {
   const navigate = useNavigate()
 
@@ -25,26 +52,12 @@ export default function ProfileTab({ client }: { client: Client }) {
     navigate('/klienten')
   }
 
-  // key sorgt dafür, dass die Felder bei externer Änderung (z. B. Import) neu befüllt werden
-  const field = (f: TextField, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
-    <div className="field">
-      <label htmlFor={`f-${f}`}>{label}</label>
-      <input
-        id={`f-${f}`}
-        key={`${f}-${client[f]}`}
-        defaultValue={client[f]}
-        onBlur={(e) => save(f, e.target.value)}
-        {...props}
-      />
-    </div>
-  )
-
   return (
     <div className="profile">
-      {field('name', 'Name', { autoComplete: 'off' })}
-      {field('address', 'Adresse')}
-      {field('email', 'E-Mail', { type: 'email' })}
-      {field('phone', 'Telefon', { type: 'tel' })}
+      <TextField id="f-name" label="Name" stored={client.name} onSave={(v) => save('name', v)} autoComplete="off" />
+      <TextField id="f-address" label="Adresse" stored={client.address} onSave={(v) => save('address', v)} />
+      <TextField id="f-email" label="E-Mail" stored={client.email} onSave={(v) => save('email', v)} type="email" />
+      <TextField id="f-phone" label="Telefon" stored={client.phone} onSave={(v) => save('phone', v)} type="tel" />
       <fieldset className="status">
         <legend>Status</legend>
         {STATUS.map((s) => (

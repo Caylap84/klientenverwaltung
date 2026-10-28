@@ -44,7 +44,7 @@ export default function ClientPage() {
         ))}
       </div>
       <div role="tabpanel">
-        {tab === 'Stammdaten' ? <ProfileTab client={client} /> : <p className="muted">Folgt.</p>}
+        {tab === 'Stammdaten' ? <ProfileTab key={client.id} client={client} /> : <p className="muted">Folgt.</p>}
       </div>
     </section>
   )
