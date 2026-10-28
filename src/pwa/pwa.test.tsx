@@ -39,4 +39,12 @@ describe('registerPwa', () => {
     vi.stubGlobal('navigator', {})
     await expect(registerPwa()).resolves.toBeUndefined()
   })
+
+  it('is a no-op inside the Tauri webview', async () => {
+    const register = vi.fn()
+    vi.stubGlobal('navigator', { serviceWorker: { register } })
+    vi.stubGlobal('__TAURI_INTERNALS__', {})
+    await expect(registerPwa()).resolves.toBeUndefined()
+    expect(register).not.toHaveBeenCalled()
+  })
 })
