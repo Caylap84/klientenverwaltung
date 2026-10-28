@@ -5,6 +5,12 @@ const NAMES = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ]
 
+const YM_RE = /^\d{4}-(0[1-9]|1[0-2])$/
+
+function isValid(ym: string): boolean {
+  return YM_RE.test(ym)
+}
+
 function parse(ym: YearMonth): [number, number] {
   const [y, m] = ym.split('-').map(Number)
   return [y, m]
@@ -15,18 +21,20 @@ function format(y: number, m0: number): YearMonth {
 }
 
 export function addMonths(ym: YearMonth, n: number): YearMonth {
+  if (!isValid(ym)) return ym
   const [y, m] = parse(ym)
   const idx = y * 12 + (m - 1) + n
   return format(Math.floor(idx / 12), ((idx % 12) + 12) % 12)
 }
 
 export function monthLabel(ym: YearMonth): string {
+  if (!isValid(ym)) return ''
   const [y, m] = parse(ym)
-  return `${NAMES[m - 1] ?? ''} ${y}`
+  return `${NAMES[m - 1]} ${y}`
 }
 
 export function contractMonths(start: YearMonth | '', term: number): YearMonth[] {
-  if (!start || term <= 0) return []
+  if (!isValid(start) || !(term > 0)) return []
   return Array.from({ length: term }, (_, i) => addMonths(start, i))
 }
 

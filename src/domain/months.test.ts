@@ -13,4 +13,11 @@ describe('months', () => {
     expect(contractMonths('2026-03', 0)).toEqual([])
   })
   it('currentMonth', () => expect(currentMonth(new Date(2026, 9, 28))).toBe('2026-10'))
+  it('ungültige Monate ergeben leer', () => {
+    for (const bad of ['abc', '2026', '2026-13', '2026-00']) {
+      expect(contractMonths(bad, 3)).toEqual([])
+      expect(monthLabel(bad)).toBe('')
+      expect(addMonths(bad, 2)).toBe(bad)
+    }
+  })
 })
