@@ -86,6 +86,22 @@ export default function ContractCard({ contract: c, index }: { contract: Contrac
     await patchContract(c.id, (latest) => ({ plannedHours: n, hours: syncHourRows(latest.hours, n, newId) }))
   }
 
+  /** Preisart umschalten; bei Betrag > 0 und Laufzeit > 1 vorher mit echten Zahlen nachfragen. */
+  async function switchMode(mode: Contract['priceMode']) {
+    const cur = await db.contracts.get(c.id)
+    if (!cur || cur.priceMode === mode) return
+    if (cur.priceCents > 0 && cur.termMonths > 1) {
+      const before = totalCents(cur)
+      const after = totalCents({ ...cur, priceMode: mode })
+      const label = mode === 'total' ? 'Gesamtpreis' : 'Monatspreis'
+      if (!confirmAction(
+        `Der eingegebene Betrag (${formatEuro(cur.priceCents)}) bleibt gleich und gilt dann als ${label}. ` +
+        `Der Vertrag ändert sich von ${formatEuro(before)} auf ${formatEuro(after)} gesamt. Fortfahren?`,
+      )) return
+    }
+    await patchContract(c.id, () => ({ priceMode: mode }))
+  }
+
   function patchRow(rowId: string, change: Partial<Contract['hours'][number]>) {
     void patchContract(c.id, (cur) => ({
       hours: cur.hours.map((h) => (h.id === rowId ? { ...h, ...change } : h)),
@@ -135,12 +151,12 @@ export default function ContractCard({ contract: c, index }: { contract: Contrac
         <legend>Preisart</legend>
         <label className="radio">
           <input type="radio" name={`${c.id}-mode`} checked={monthly}
-            onChange={() => void patchContract(c.id, () => ({ priceMode: 'monthly' }))} />
+            onChange={() => void switchMode('monthly')} />
           Monatspreis
         </label>
         <label className="radio">
           <input type="radio" name={`${c.id}-mode`} checked={!monthly}
-            onChange={() => void patchContract(c.id, () => ({ priceMode: 'total' }))} />
+            onChange={() => void switchMode('total')} />
           Gesamtpreis
         </label>
       </fieldset>

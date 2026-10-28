@@ -61,12 +61,46 @@ describe('Preis', () => {
     expect((await stored(contractId)).priceMode).toBe('total')
   })
 
-  it('Umschalten behält die eingegebene Zahl (priceCents unverändert)', async () => {
+  it('Umschalten (bestätigt) behält die eingegebene Zahl (priceCents unverändert)', async () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000 })
+    vi.mocked(confirmAction).mockReturnValue(true)
     await userEvent.click(await screen.findByRole('radio', { name: 'Gesamtpreis' }))
     await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('total'))
     expect((await stored(contractId)).priceCents).toBe(10000)
     expect(await screen.findByLabelText('Preis in € gesamt')).toHaveValue('100,00')
+  })
+
+  it('Umschalten fragt mit echten Zahlen nach; Ablehnen ändert nichts', async () => {
+    const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000 })
+    vi.mocked(confirmAction).mockReturnValue(false)
+    await userEvent.click(await screen.findByRole('radio', { name: 'Gesamtpreis' }))
+    await vi.waitFor(() => expect(confirmAction).toHaveBeenCalledOnce())
+    const msg = vi.mocked(confirmAction).mock.calls[0][0].replace(/[\u00a0\u202f]/g, ' ')
+    expect(msg).toBe('Der eingegebene Betrag (100,00 €) bleibt gleich und gilt dann als Gesamtpreis. Der Vertrag ändert sich von 600,00 € auf 100,00 € gesamt. Fortfahren?')
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+    expect(await stored(contractId)).toMatchObject({ priceMode: 'monthly', priceCents: 10000 })
+    expect(screen.getByRole('radio', { name: 'Monatspreis' })).toBeChecked()
+    expect(screen.getByLabelText('Preis in € pro Monat')).toHaveValue('100,00')
+  })
+
+  it('Umschalten zurück auf Monatspreis (bestätigt): Gesamt 100 → 600', async () => {
+    const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000, priceMode: 'total' })
+    vi.mocked(confirmAction).mockReturnValue(true)
+    await userEvent.click(await screen.findByRole('radio', { name: 'Monatspreis' }))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('monthly'))
+    const msg = vi.mocked(confirmAction).mock.calls[0][0].replace(/[\u00a0\u202f]/g, ' ')
+    expect(msg).toBe('Der eingegebene Betrag (100,00 €) bleibt gleich und gilt dann als Monatspreis. Der Vertrag ändert sich von 100,00 € auf 600,00 € gesamt. Fortfahren?')
+    expect((await stored(contractId)).priceCents).toBe(10000)
+  })
+
+  it('keine Rückfrage bei Preis 0 oder Laufzeit ≤ 1', async () => {
+    const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 0 })
+    await userEvent.click(await screen.findByRole('radio', { name: 'Gesamtpreis' }))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('total'))
+    await updateContract(contractId, { priceCents: 5000, termMonths: 1 })
+    await userEvent.click(await screen.findByRole('radio', { name: 'Monatspreis' }))
+    await vi.waitFor(async () => expect((await stored(contractId)).priceMode).toBe('monthly'))
+    expect(confirmAction).not.toHaveBeenCalled()
   })
 
   it('Unsinn in Zähl-Feldern ergibt 0, nie NaN', async () => {
