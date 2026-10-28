@@ -1,32 +1,31 @@
-# React + TypeScript + Vite
+# Klientenverwaltung
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Kleine Offline-App (PWA) zur Verwaltung von Klienten im Stimmtraining: Stammdaten, Verträge mit
+Laufzeit und Preis, geplante und erledigte Stunden, Honorareingänge pro Monat, Notizen,
+Dokumentation und PDFs. Alle Daten liegen nur lokal im Browser (IndexedDB) des jeweiligen Geräts.
+Für Windows gibt es zusätzlich eine EXE (Tauri), siehe [docs/windows-build.md](docs/windows-build.md).
 
-Currently, two official plugins are available:
+## Entwicklung
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install        # Abhängigkeiten installieren
+npm run dev        # Entwicklungsserver starten (Adresse wird angezeigt)
+npm test           # Unit- und Komponententests (Vitest)
+npm run test:e2e   # baut die App und prüft den Hauptablauf im Browser (Playwright)
+npm run build      # Produktionsversion nach dist/ bauen
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Als App installieren (PWA)
+
+Die Installation („Zum Startbildschirm hinzufügen“ bzw. „App installieren“) ist nur über eine
+HTTPS-Adresse möglich. Dazu muss der Inhalt von `dist/` auf einem Webserver mit HTTPS liegen
+(z. B. GitHub Pages oder Netlify). Über `npm run dev` oder eine lokale IP-Adresse ohne HTTPS lässt
+sich die App nicht installieren.
+
+## Sicherungen
+
+Unter **Sicherung** exportierst du alle Daten als JSON-Datei. Sie wird als Download gespeichert
+(Android/Chrome: Ordner „Downloads“) und sollte von dort in einen Cloud-Ordner verschoben werden.
+Auf einem anderen Gerät importierst du diese Datei; der Import ersetzt alle Daten dort, der
+vorherige Stand bleibt als Sicherheitskopie erhalten. Die Datei ist nicht verschlüsselt – nur in
+einem gut geschützten Cloud-Ordner (starkes Passwort, Zwei-Faktor-Anmeldung) ablegen.

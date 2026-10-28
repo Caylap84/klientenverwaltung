@@ -16,7 +16,7 @@ export default defineConfig({
         name: 'Klientenverwaltung',
         short_name: 'Klienten',
         description:
-          'Klientenverwaltung für Stimmtraining: Klienten, Termine und Notizen lokal und offline verwalten.',
+          'Klientenverwaltung für Stimmtraining: Klienten, Verträge, Stunden und Honorar lokal und offline verwalten.',
         lang: 'de',
         display: 'standalone',
         start_url: './',

@@ -8,6 +8,12 @@
    - `klientenverwaltung-portable` – direkt startbare `klientenverwaltung.exe`
    - `web-dist` – die Web-Version (nur für Entwickler)
 
+Installer und portable EXE sind Alternativen: Verwende nur eine von beiden. Beide nutzen
+denselben Datenordner, die Daten sind also in beiden dieselben.
+
+Achtung beim Deinstallieren: Wird dabei „App-Daten löschen“ angehakt, werden alle Klientendaten
+auf diesem Rechner gelöscht. Vorher unbedingt unter **Sicherung → Exportieren** sichern.
+
 Der Build startet auch automatisch, wenn ein Tag wie `v0.1.0` hochgeladen wird.
 
 ## Hinweis zu SmartScreen
@@ -25,3 +31,5 @@ Diese Punkte konnten nicht automatisch geprüft werden. Bitte einmal durchgehen:
    bitte dem Entwickler Bescheid geben.
 4. Genau diese Datei unter **Sicherung → Importieren** wieder einlesen – die Daten sind vollständig.
 5. Bei einem Klienten ein PDF hinzufügen und es mit **Öffnen** ansehen.
+6. Unter **Sicherung** den Speicherstatus ansehen („Speicher: dauerhaft gesichert“ oder
+   „vom Browser nicht garantiert“) und dem Entwickler mitteilen, was dort steht.
