@@ -105,3 +105,13 @@ textarea { font: inherit; color: inherit; background: var(--surface); padding: 0
   .open-list li { grid-template-columns: 1fr auto auto; }
   .open-list button { grid-column: auto; }
 }
+
+.backup { max-width: 40rem; }
+.backup h2 { font-size: 1.1rem; margin: 1.5rem 0 0.6rem; }
+.notice { margin: 0.5rem 0; padding: 0.6rem 0.9rem; border-radius: 6px; border: 1px solid var(--border); }
+.notice.warn { border-color: #b54708; background: color-mix(in srgb, #b54708 12%, transparent); }
+.notice.ok { border-color: #067647; background: color-mix(in srgb, #067647 10%, transparent); }
+.confirm-panel { border: 2px solid var(--accent); border-radius: 8px; background: var(--surface); padding: 1rem; margin: 1rem 0; }
+.confirm-panel h3 { margin: 0 0 0.6rem; font-size: 1.05rem; }
+.compare { margin: 0 0 0.8rem; padding-left: 1.2rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }

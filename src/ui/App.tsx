@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import Layout from './Layout'
 import ClientListPage from './pages/ClientListPage'
 import ClientPage from './pages/ClientPage'
+import BackupPage from './pages/BackupPage'
 import OverviewPage from './pages/OverviewPage'
 import './ui.css'
 
@@ -21,7 +22,7 @@ export default function App() {
         <Route index element={<OverviewPage />} />
         <Route path="klienten" element={<ClientListPage />} />
         <Route path="klienten/:id" element={<ClientPage />} />
-        <Route path="sicherung" element={<Placeholder title="Sicherung" />} />
+        <Route path="sicherung" element={<BackupPage />} />
         <Route path="*" element={<Placeholder title="Seite nicht gefunden" />} />
       </Route>
     </Routes>
