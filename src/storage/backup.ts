@@ -86,17 +86,48 @@ function validateBackup(data: unknown): BackupFile {
   if (!Array.isArray(clients) || !Array.isArray(contracts) || !Array.isArray(pdfs)) {
     throw new BackupError(INVALID)
   }
-  for (const item of [...clients, ...contracts]) {
-    if (!isObj(item) || typeof item.id !== 'string') throw new BackupError(INVALID)
+  const isStr = (v: unknown): v is string => typeof v === 'string'
+  const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+  const fail = (): never => {
+    throw new BackupError(INVALID)
+  }
+  const uniqueIds = (items: unknown[]) => {
+    const seen = new Set<string>()
+    for (const it of items) {
+      const id = (it as Record<string, unknown>).id as string
+      if (seen.has(id)) throw new BackupError('Die Sicherung enthält doppelte Einträge.')
+      seen.add(id)
+    }
+    return seen
+  }
+  const STATUS = ['aktiv', 'pausiert', 'archiviert']
+  for (const c of clients) {
+    if (
+      !isObj(c) || !isStr(c.id) || !isStr(c.name) || !isStr(c.address) || !isStr(c.email) ||
+      !isStr(c.phone) || !isStr(c.notes) || !STATUS.includes(c.status as string) ||
+      !Array.isArray(c.log)
+    ) fail()
+  }
+  for (const k of contracts) {
+    if (
+      !isObj(k) || !isStr(k.id) || !isStr(k.clientId) || !Array.isArray(k.hours) ||
+      !isObj(k.paid) || !isNum(k.termMonths) || !isNum(k.priceCents) ||
+      !isNum(k.hourlyCents) || !isNum(k.plannedHours) ||
+      (k.priceMode !== 'monthly' && k.priceMode !== 'total') || !isStr(k.startMonth)
+    ) fail()
   }
   for (const p of pdfs) {
     if (
-      !isObj(p) ||
-      typeof p.id !== 'string' || typeof p.clientId !== 'string' ||
-      typeof p.name !== 'string' || typeof p.addedAt !== 'string' ||
-      typeof p.dataBase64 !== 'string' || !isBase64(p.dataBase64)
-    ) {
-      throw new BackupError(INVALID)
+      !isObj(p) || !isStr(p.id) || !isStr(p.clientId) || !isStr(p.name) ||
+      !isStr(p.addedAt) || !isStr(p.type) || !isStr(p.dataBase64) || !isBase64(p.dataBase64)
+    ) fail()
+  }
+  const clientIds = uniqueIds(clients)
+  uniqueIds(contracts)
+  uniqueIds(pdfs)
+  for (const x of [...contracts, ...pdfs]) {
+    if (!clientIds.has((x as { clientId: string }).clientId)) {
+      throw new BackupError('Die Sicherung enthält Daten ohne zugehörigen Klienten.')
     }
   }
   return data as unknown as BackupFile
@@ -138,7 +169,9 @@ export async function describeDifference(file: BackupFile): Promise<{
   }
 }
 
-// Ersetzt Klienten, Verträge und PDFs atomar in einer Transaktion.
+// Ersetzt Klienten, Verträge und PDFs atomar in einer Transaktion. In derselben
+// Transaktion wird der ersetzte Stand als Sicherheitskopie abgelegt: sie wird
+// also nur festgeschrieben, wenn der Austausch gelingt.
 async function replaceAll(file: BackupFile, dirty: boolean): Promise<void> {
   const valid = validateBackup(file)
   // Dekodieren vor der Transaktion: Fehler hier berühren die Daten nicht.
@@ -147,22 +180,23 @@ async function replaceAll(file: BackupFile, dirty: boolean): Promise<void> {
     data: base64ToBytes(dataBase64),
   }))
   await db.transaction('rw', db.clients, db.contracts, db.pdfs, db.meta, async () => {
+    const previous = await buildBackup()
     await db.clients.clear()
     await db.contracts.clear()
     await db.pdfs.clear()
     await db.clients.bulkAdd(valid.clients)
     await db.contracts.bulkAdd(valid.contracts)
     await db.pdfs.bulkAdd(pdfs)
+    await setMeta('safetyCopy', previous)
     await setMeta('dirty', dirty)
   })
 }
 
 export async function importBackup(file: BackupFile): Promise<void> {
-  // Zuerst die Sicherheitskopie des aktuellen Stands, dann ersetzen.
-  await setMeta('safetyCopy', await buildBackup())
   await replaceAll(file, false)
 }
 
+// Tausch: der ersetzte Stand wird zur neuen Sicherheitskopie (Wiederherstellen ist umkehrbar).
 export async function restoreSafetyCopy(): Promise<boolean> {
   const copy = await getMeta<BackupFile | null>('safetyCopy')
   if (!copy) return false

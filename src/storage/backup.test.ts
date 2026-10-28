@@ -181,6 +181,101 @@ describe('importBackup / Sicherheitskopie', () => {
   })
 })
 
+describe('Sicherheitskopie: Tausch und Schutz', () => {
+  async function fileWith(name: string) {
+    const f = await buildBackup()
+    f.clients = [{ ...f.clients[0], id: 'a-' + name, name }]
+    f.contracts = []
+    f.pdfs = []
+    return f
+  }
+
+  it('ungültiger/fehlschlagender Import behält die gute Sicherheitskopie', async () => {
+    await seed()
+    const original = await db.clients.toArray()
+    await importBackup(await fileWith('A'))
+    const copyBefore = await getMeta('safetyCopy')
+    const bad = await fileWith('B')
+    ;(bad.clients[0] as unknown as Record<string, unknown>).status = 'kaputt'
+    await expect(importBackup(bad)).rejects.toThrow(BackupError)
+    expect(await getMeta('safetyCopy')).toEqual(copyBefore)
+
+    vi.spyOn(db.pdfs, 'bulkAdd').mockRejectedValue(new Error('Schreibfehler'))
+    await expect(importBackup(await fileWith('C'))).rejects.toThrow()
+    vi.restoreAllMocks()
+    expect(await getMeta('safetyCopy')).toEqual(copyBefore)
+    expect((await db.clients.toArray()).map((c) => c.name)).toEqual(['A'])
+
+    expect(await restoreSafetyCopy()).toBe(true)
+    expect(await db.clients.toArray()).toEqual(original)
+  })
+
+  it('Wiederherstellen ist ein Tausch und selbst umkehrbar', async () => {
+    await seed()
+    const original = await db.clients.toArray()
+    await importBackup(await fileWith('A'))
+    expect(await restoreSafetyCopy()).toBe(true)
+    expect(await db.clients.toArray()).toEqual(original)
+    const copy = await getMeta<{ clients: { name: string }[] }>('safetyCopy')
+    expect(copy!.clients.map((c) => c.name)).toEqual(['A'])
+    expect(await restoreSafetyCopy()).toBe(true)
+    expect((await db.clients.toArray()).map((c) => c.name)).toEqual(['A'])
+  })
+})
+
+describe('strenge Validierung', () => {
+  const base = () => ({
+    format: 'klientenverwaltung', version: 1, exportedAt: '2026-10-28T10:00:00.000Z',
+    clients: [{ id: 'c', name: '', address: '', email: '', phone: '', status: 'aktiv', notes: '', log: [] }],
+    contracts: [{
+      id: 'k', clientId: 'c', startMonth: '', termMonths: 6, priceMode: 'monthly',
+      priceCents: 0, hourlyCents: 0, plannedHours: 0, hours: [], paid: {},
+    }],
+    pdfs: [{ id: 'p', clientId: 'c', name: 'n', addedAt: 'x', type: '', dataBase64: 'QQ==' }],
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mut = (fn: (b: any) => void) => { const b = base(); fn(b); return JSON.stringify(b) }
+
+  it('gültige Basis wird akzeptiert', () => {
+    expect(() => parseBackup(JSON.stringify(base()))).not.toThrow()
+  })
+
+  const bad: Array<[string, string]> = [
+    ['doppelte Klienten-IDs', mut((b) => b.clients.push({ ...b.clients[0] }))],
+    ['doppelte Vertrags-IDs', mut((b) => b.contracts.push({ ...b.contracts[0] }))],
+    ['doppelte PDF-IDs', mut((b) => b.pdfs.push({ ...b.pdfs[0] }))],
+    ['Vertrag ohne hours', mut((b) => delete b.contracts[0].hours)],
+    ['paid kein Objekt', mut((b) => (b.contracts[0].paid = []))],
+    ['termMonths keine Zahl', mut((b) => (b.contracts[0].termMonths = '6'))],
+    ['priceMode falsch', mut((b) => (b.contracts[0].priceMode = 'x'))],
+    ['Status ungültig', mut((b) => (b.clients[0].status = 'weg'))],
+    ['log kein Array', mut((b) => (b.clients[0].log = {}))],
+    ['Vertrag ohne Klient', mut((b) => (b.contracts[0].clientId = 'zz'))],
+    ['PDF ohne Klient', mut((b) => (b.pdfs[0].clientId = 'zz'))],
+    ['PDF type numerisch', mut((b) => (b.pdfs[0].type = 5))],
+  ]
+  for (const [label, text] of bad) {
+    it(`wirft BackupError: ${label}`, () => {
+      expect(() => parseBackup(text)).toThrow(BackupError)
+    })
+  }
+
+  it('importBackup(ungültig) direkt: DB und safetyCopy unverändert', async () => {
+    await seed()
+    await importBackup(await buildBackup())
+    const clients = await db.clients.toArray()
+    const contracts = await db.contracts.toArray()
+    const pdfCount = await db.pdfs.count()
+    const copy = await getMeta('safetyCopy')
+    const invalid = JSON.parse(mut((b) => (b.contracts[0].clientId = 'zz')))
+    await expect(importBackup(invalid)).rejects.toThrow(BackupError)
+    expect(await db.clients.toArray()).toEqual(clients)
+    expect(await db.contracts.toArray()).toEqual(contracts)
+    expect(await db.pdfs.count()).toBe(pdfCount)
+    expect(await getMeta('safetyCopy')).toEqual(copy)
+  })
+})
+
 describe('describeDifference', () => {
   it('fileIsOlder wenn Datei vor lokalem lastExportAt', async () => {
     await createClient()
