@@ -93,7 +93,7 @@ describe('BackupPage', () => {
     await user.upload(input(), file)
     const panel = await screen.findByRole('region', { name: 'Import bestätigen' })
     expect(within(panel).getByText(/Datei: exportiert am .*, 1 Klient/)).toBeInTheDocument()
-    expect(within(panel).getByText(/Dieses Gerät: letzter Export .*, 3 Klienten/)).toBeInTheDocument()
+    expect(within(panel).getByText(/^Dieses Gerät: Stand \d{2}\.\d{2}\.\d{4}, \d{2}:\d{2} Uhr, letzter Export \d{2}\.\d{2}\.\d{4}, \d{2}:\d{2} Uhr, 3 Klienten$/)).toBeInTheDocument()
 
     await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
     expect(screen.queryByRole('region', { name: 'Import bestätigen' })).not.toBeInTheDocument()
@@ -168,7 +168,7 @@ describe('BackupPage', () => {
     renderPage()
     await pick(old)
     const panel = await screen.findByRole('region', { name: 'Import bestätigen' })
-    expect(within(panel).getByText(/Diese Datei ist älter als dein letzter Export von diesem Gerät\. Beim Import gehen neuere Änderungen verloren\./)).toBeInTheDocument()
+    expect(within(panel).getByText(/Diese Datei ist älter als der Stand dieses Geräts \(letzter Export oder Import\)\. Beim Import gehen neuere Änderungen verloren\./)).toBeInTheDocument()
     expect(within(panel).queryByText(/ungesicherte Änderungen, die beim Import/)).not.toBeInTheDocument()
   })
 
@@ -179,8 +179,25 @@ describe('BackupPage', () => {
     renderPage()
     await pick(file)
     const panel = await screen.findByRole('region', { name: 'Import bestätigen' })
-    expect(within(panel).queryByText(/älter als dein letzter Export/)).not.toBeInTheDocument()
+    expect(within(panel).queryByText(/älter als der Stand dieses Geräts/)).not.toBeInTheDocument()
     expect(within(panel).getByText('Dieses Gerät hat ungesicherte Änderungen, die beim Import verloren gehen.')).toBeInTheDocument()
+  })
+
+  it('nach Import einer neueren Datei: eigene ältere Datei zeigt die Warnung, Stand wird angezeigt', async () => {
+    await createClient({ name: 'B' })
+    const own = await makeFile('eigene.json')
+    const parsedOwn = JSON.parse(await own.text())
+    const newer = { ...parsedOwn, exportedAt: new Date(Date.parse(parsedOwn.exportedAt) + 86_400_000).toISOString() }
+    await importBackup(newer)
+    renderPage()
+    const d = new Date(newer.exportedAt)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const shown = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())} Uhr`
+    expect(await screen.findByText(`Stand dieses Geräts: ${shown}`)).toBeInTheDocument()
+    await pick(own)
+    const panel = await screen.findByRole('region', { name: 'Import bestätigen' })
+    expect(within(panel).getByText(/älter als der Stand dieses Geräts/)).toBeInTheDocument()
+    expect(within(panel).getByText(new RegExp(`^Dieses Gerät: Stand ${shown}`))).toBeInTheDocument()
   })
 
   it('Wiederherstellen erscheint nur mit Sicherheitskopie und tauscht die Stände', async () => {

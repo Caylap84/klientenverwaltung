@@ -331,3 +331,99 @@ describe('PDF-Metadaten und Bytes getrennt', () => {
     expect(Array.from((await db.pdfData.get('p1'))!.data)).toEqual([1, 2, 3, 255])
   })
 })
+
+describe('stateAt (Stand dieses Geräts)', () => {
+  async function exportAt(iso: string) {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(iso))
+    try {
+      return parseBackup(await (await exportBackup()).blob.text())
+    } finally {
+      vi.useRealTimers()
+    }
+  }
+
+  it('Export setzt stateAt = exportedAt', async () => {
+    await createClient()
+    const f = await exportAt('2026-10-01T08:00:00.000Z')
+    expect(f.exportedAt).toBe('2026-10-01T08:00:00.000Z')
+    expect(await getMeta('stateAt')).toBe(f.exportedAt)
+    expect(await getMeta('lastExportAt')).toBe(f.exportedAt)
+  })
+
+  it('Szenario: Gerät B importiert neuere Datei von A; eigene alte Datei gilt danach als älter', async () => {
+    // Gerät A exportiert D1 und D3
+    await createClient({ name: 'A' })
+    await exportAt('2026-10-01T08:00:00.000Z')
+    const d3 = await exportAt('2026-10-03T08:00:00.000Z')
+    // Gerät B (eigener Stand) exportiert D2 und importiert dann D3
+    await clearAll()
+    await createClient({ name: 'B' })
+    const d2 = await exportAt('2026-10-02T08:00:00.000Z')
+    await importBackup(d3)
+    expect(await getMeta('stateAt')).toBe(d3.exportedAt)
+    expect(await getMeta('lastExportAt')).toBe(d2.exportedAt)
+    // B wählt seine eigene alte Datei D2
+    const diff = await describeDifference(d2)
+    expect(diff.fileIsOlder).toBe(true)
+    expect(diff.localStateAt).toBe(d3.exportedAt)
+    expect(diff.localLastExportAt).toBe(d2.exportedAt)
+    // D3 selbst ist nicht älter
+    expect((await describeDifference(d3)).fileIsOlder).toBe(false)
+  })
+
+  it('Wiederherstellen tauscht stateAt mit der Sicherheitskopie', async () => {
+    await createClient({ name: 'Lokal' })
+    const own = await exportAt('2026-10-02T08:00:00.000Z')
+    const other = { ...own, exportedAt: '2026-10-05T08:00:00.000Z', clients: [{ ...own.clients[0], id: 'x', name: 'Fremd' }] }
+    await importBackup(other)
+    expect(await getMeta('stateAt')).toBe('2026-10-05T08:00:00.000Z')
+    expect(await restoreSafetyCopy()).toBe(true)
+    expect((await db.clients.toArray()).map((c) => c.name)).toEqual(['Lokal'])
+    expect(await getMeta('stateAt')).toBe('2026-10-02T08:00:00.000Z')
+    expect(await restoreSafetyCopy()).toBe(true)
+    expect((await db.clients.toArray()).map((c) => c.name)).toEqual(['Fremd'])
+    expect(await getMeta('stateAt')).toBe('2026-10-05T08:00:00.000Z')
+  })
+
+  it('Sicherheitskopie ohne bekannten Stand: exportedAt = Zeitpunkt der Kopie', async () => {
+    await createClient({ name: 'Nie gesichert' })
+    const file = await buildBackup()
+    file.clients = [{ ...file.clients[0], id: 'y', name: 'Neu' }]
+    file.exportedAt = '2026-10-05T08:00:00.000Z'
+    const before = Date.now()
+    await importBackup(file)
+    const copy = await getMeta<{ exportedAt: string }>('safetyCopy')
+    expect(new Date(copy!.exportedAt).getTime()).toBeGreaterThanOrEqual(before - 1000)
+    await restoreSafetyCopy()
+    expect(await getMeta('stateAt')).toBe(copy!.exportedAt)
+  })
+
+  it('fehlgeschlagener Import lässt stateAt unverändert', async () => {
+    await createClient({ name: 'A' })
+    const own = await exportAt('2026-10-02T08:00:00.000Z')
+    const newer = { ...own, exportedAt: '2026-10-09T08:00:00.000Z' }
+    vi.spyOn(db.contracts, 'bulkAdd').mockRejectedValue(new Error('Schreibfehler'))
+    await expect(importBackup(newer)).rejects.toThrow()
+    vi.restoreAllMocks()
+    expect(await getMeta('stateAt')).toBe('2026-10-02T08:00:00.000Z')
+    const invalid = { ...newer, clients: [{ id: 1 }] } as unknown as typeof newer
+    await expect(importBackup(invalid)).rejects.toThrow(BackupError)
+    expect(await getMeta('stateAt')).toBe('2026-10-02T08:00:00.000Z')
+  })
+
+  it('fileIsOlder: Maximum aus lastExportAt und stateAt; fehlende/ungültige Werte ignoriert', async () => {
+    const file = await buildBackup()
+    file.exportedAt = '2026-10-03T00:00:00.000Z'
+    await setMeta('lastExportAt', 'kaputt')
+    await setMeta('stateAt', '2026-10-04T00:00:00.000Z')
+    expect((await describeDifference(file)).fileIsOlder).toBe(true)
+    await setMeta('stateAt', 'auch kaputt')
+    expect((await describeDifference(file)).fileIsOlder).toBe(false)
+    await setMeta('lastExportAt', '2026-10-04T00:00:00.000Z')
+    await setMeta('stateAt', '2026-10-01T00:00:00.000Z')
+    expect((await describeDifference(file)).fileIsOlder).toBe(true)
+    file.exportedAt = 'ungültig'
+    expect((await describeDifference(file)).fileIsOlder).toBe(false)
+  })
+})

@@ -74,6 +74,7 @@ export async function exportBackup(): Promise<{ fileName: string; blob: Blob }> 
   const blob = new Blob([JSON.stringify(file)], { type: 'application/json' })
   await db.transaction('rw', db.meta, async () => {
     await setMeta('lastExportAt', file.exportedAt)
+    await setMeta('stateAt', file.exportedAt)
     await setMeta('dirty', false)
   })
   return { fileName: backupFileName(), blob }
@@ -156,23 +157,35 @@ export function parseBackup(text: string): BackupFile {
   }
 }
 
+const time = (iso: unknown): number | undefined => {
+  if (typeof iso !== 'string') return undefined
+  const t = new Date(iso).getTime()
+  return Number.isNaN(t) ? undefined : t
+}
+
 export async function describeDifference(file: BackupFile): Promise<{
   fileExportedAt: string
   fileClients: number
   localClients: number
   localLastExportAt?: string
+  localStateAt?: string
   fileIsOlder: boolean
 }> {
   const localClients = await db.clients.count()
-  const localLastExportAt = await getMeta<string>('lastExportAt')
-  const fileIsOlder =
-    localLastExportAt !== undefined &&
-    new Date(file.exportedAt).getTime() < new Date(localLastExportAt).getTime()
+  const lastExport = await getMeta<unknown>('lastExportAt')
+  const state = await getMeta<unknown>('stateAt')
+  const localLastExportAt = typeof lastExport === 'string' ? lastExport : undefined
+  const localStateAt = typeof state === 'string' ? state : undefined
+  // Älter als der neueste bekannte Stand dieses Geräts (letzter Export oder Import/Wiederherstellung).
+  const known = [time(localLastExportAt), time(localStateAt)].filter((t): t is number => t !== undefined)
+  const fileTime = time(file.exportedAt)
+  const fileIsOlder = fileTime !== undefined && known.length > 0 && fileTime < Math.max(...known)
   return {
     fileExportedAt: file.exportedAt,
     fileClients: file.clients.length,
     localClients,
     ...(localLastExportAt !== undefined ? { localLastExportAt } : {}),
+    ...(localStateAt !== undefined ? { localStateAt } : {}),
     fileIsOlder,
   }
 }
@@ -180,6 +193,12 @@ export async function describeDifference(file: BackupFile): Promise<{
 // Ersetzt Klienten, Verträge und PDFs atomar in einer Transaktion. In derselben
 // Transaktion wird der ersetzte Stand als Sicherheitskopie abgelegt: sie wird
 // also nur festgeschrieben, wenn der Austausch gelingt.
+//
+// Meta 'stateAt' = Zeitstempel des Datenstands, den dieses Gerät gerade darstellt. Er wird in
+// derselben Transaktion auf `file.exportedAt` gesetzt. Die Sicherheitskopie merkt sich den
+// stateAt des ersetzten Stands in ihrem eigenen `exportedAt` (Fallback: Zeitpunkt der Kopie,
+// wenn kein Stand bekannt ist). Wiederherstellen (= Import der Kopie) setzt stateAt daher auf
+// copy.exportedAt, und ein zweites Wiederherstellen tauscht ihn wieder zurück.
 async function replaceAll(file: BackupFile, dirty: boolean): Promise<void> {
   const valid = validateBackup(file)
   // Dekodieren vor der Transaktion: Fehler hier berühren die Daten nicht.
@@ -189,6 +208,10 @@ async function replaceAll(file: BackupFile, dirty: boolean): Promise<void> {
   const blobs = decoded.map(({ rest, data }) => ({ id: rest.id, data }))
   await db.transaction('rw', db.clients, db.contracts, db.pdfs, db.pdfData, db.meta, async () => {
     const previous = await buildBackup()
+    const previousStateAt = await getMeta<unknown>('stateAt')
+    if (typeof previousStateAt === 'string' && time(previousStateAt) !== undefined) {
+      previous.exportedAt = previousStateAt
+    }
     await db.clients.clear()
     await db.contracts.clear()
     await db.pdfs.clear()
@@ -198,6 +221,7 @@ async function replaceAll(file: BackupFile, dirty: boolean): Promise<void> {
     await db.pdfs.bulkAdd(pdfs)
     await db.pdfData.bulkAdd(blobs)
     await setMeta('safetyCopy', previous)
+    await setMeta('stateAt', valid.exportedAt)
     await setMeta('dirty', dirty)
   })
 }

@@ -1,7 +1,9 @@
 import Dexie, { type Table } from 'dexie'
 import type { Client, Contract, PdfDoc, PdfData } from '../domain/types'
 
-// Schlüssel: 'dirty' (boolean), 'lastExportAt' (string), 'safetyCopy' (BackupFile | null)
+// Schlüssel: 'dirty' (boolean), 'lastExportAt' (string), 'stateAt' (string, Zeitstempel des Datenstands
+// dieses Geräts: letzter Export, Import oder Wiederherstellung), 'safetyCopy' (BackupFile | null; ihr
+// exportedAt ist der stateAt des ersetzten Stands)
 export interface Meta {
   key: string
   value: unknown

@@ -50,6 +50,10 @@ export default function BackupPage() {
     const v = (await db.meta.get('lastExportAt'))?.value
     return typeof v === 'string' ? v : null
   })
+  const stateAt = useLiveQuery(async () => {
+    const v = (await db.meta.get('stateAt'))?.value
+    return typeof v === 'string' ? v : null
+  })
   const hasSafetyCopy = useLiveQuery(async () => Boolean((await db.meta.get('safetyCopy'))?.value))
 
   function resetInput() {
@@ -143,6 +147,7 @@ export default function BackupPage() {
       </p>
 
       <div className="backup-status">
+        {stateAt && <p>Stand dieses Geräts: {formatDateTime(stateAt)}</p>}
         <p>{lastExportAt ? `Letzter Export: ${formatDateTime(lastExportAt)}` : lastExportAt === null ? 'Noch nie exportiert' : 'Lädt …'}</p>
         {persisted !== undefined && (
           <p>{persisted ? 'Speicher: dauerhaft gesichert' : 'Speicher: vom Browser nicht garantiert – exportiere regelmäßig'}</p>
@@ -178,15 +183,16 @@ export default function BackupPage() {
               Datei: exportiert am {formatDateTime(pending.diff.fileExportedAt)}, {clientCount(pending.diff.fileClients)}
             </li>
             <li>
-              Dieses Gerät: letzter Export{' '}
+              Dieses Gerät: Stand{' '}
+              {pending.diff.localStateAt ? formatDateTime(pending.diff.localStateAt) : 'unbekannt'}, letzter Export{' '}
               {pending.diff.localLastExportAt ? formatDateTime(pending.diff.localLastExportAt) : 'nie'},{' '}
               {clientCount(pending.diff.localClients)}
             </li>
           </ul>
           {pending.diff.fileIsOlder && (
             <p className="notice warn">
-              <strong>Achtung:</strong> Diese Datei ist älter als dein letzter Export von diesem Gerät. Beim Import
-              gehen neuere Änderungen verloren.
+              <strong>Achtung:</strong> Diese Datei ist älter als der Stand dieses Geräts (letzter Export oder
+              Import). Beim Import gehen neuere Änderungen verloren.
             </p>
           )}
           {dirty && (
