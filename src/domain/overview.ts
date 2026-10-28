@@ -1,7 +1,7 @@
 import type { Client, Contract, YearMonth } from './types'
 import { monthAmounts } from './contract'
 import { contractMonths, isYearMonth, monthLabel } from './months'
-import { clientDisplayName } from '../ui/clientName'
+import { clientDisplayName } from './clientName'
 
 export interface OpenItem { clientId: string; contractId: string; cents: number }
 export interface MonthOverview {

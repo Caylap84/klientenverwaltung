@@ -1,9 +1,6 @@
-import type { Client, Status } from '../domain/types'
+import type { Status } from '../domain/types'
 
-export function clientDisplayName(c: Pick<Client, 'name'>): string {
-  const n = c.name.trim()
-  return n === '' ? 'Unbenannter Klient' : n
-}
+export { clientDisplayName } from '../domain/clientName'
 
 export const STATUS_LABELS: Record<Status, string> = {
   aktiv: 'Aktiv',

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { db, createClient, createContract, updateContract } from '../../storage/repository'
@@ -176,11 +176,11 @@ describe('OverviewPage', () => {
       const { ca } = await seedOverdue()
       await updateContract(ca, { paid: { '2026-10': { paidOn: '2026-10-01' } } })
       renderPage('/?monat=2026-10')
-      await userEvent.click(await screen.findByRole('button', { name: 'Als bezahlt abhaken: Anna Beispiel, August 2026' }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Als bezahlt abhaken: Anna Beispiel, August 2026, überfällig' }))
       await waitFor(async () => expect(Object.keys((await db.contracts.get(ca))!.paid).sort())
         .toEqual(['2026-08', '2026-10']))
       expect((await db.contracts.get(ca))!.paid['2026-08']).toEqual({ paidOn: todayIso() })
-      await waitFor(() => expect(screen.queryByRole('button', { name: 'Als bezahlt abhaken: Anna Beispiel, August 2026' }))
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Als bezahlt abhaken: Anna Beispiel, August 2026, überfällig' }))
         .not.toBeInTheDocument())
       expect(screen.getByRole('heading', { name: /^Überfällig · 2 Monate · 150,00/ })).toBeInTheDocument()
     })
@@ -192,8 +192,26 @@ describe('OverviewPage', () => {
       await screen.findByRole('heading', { name: /^Überfällig/ })
       const names = screen.getAllByRole('button', { name: /^Als bezahlt abhaken/ }).map((b) => b.getAttribute('aria-label'))
       expect(new Set(names).size).toBe(names.length)
-      expect(names).toContain('Als bezahlt abhaken: Anna Beispiel, September 2026, Vertrag 1')
-      expect(names).toContain('Als bezahlt abhaken: Anna Beispiel, September 2026, Vertrag 2')
+      expect(names).toContain('Als bezahlt abhaken: Anna Beispiel, September 2026, Vertrag 1, überfällig')
+      expect(names).toContain('Als bezahlt abhaken: Anna Beispiel, September 2026, Vertrag 2, überfällig')
+    })
+
+    it('derselbe Eintrag in Überfällig und Monatsliste: Namen eindeutig, Abhaken entfernt ihn aus beiden', async () => {
+      const { ca } = await seedOverdue()
+      for (const name of ['Als bezahlt abhaken: Anna Beispiel, August 2026', 'Als bezahlt abhaken: Anna Beispiel, August 2026, überfällig']) {
+        renderPage('/?monat=2026-08')
+        await screen.findByRole('button', { name })
+        const names = screen.getAllByRole('button', { name: /^Als bezahlt abhaken/ }).map((b) => b.getAttribute('aria-label'))
+        expect(new Set(names).size).toBe(names.length)
+        expect(names).toEqual(expect.arrayContaining([
+          'Als bezahlt abhaken: Anna Beispiel, August 2026',
+          'Als bezahlt abhaken: Anna Beispiel, August 2026, überfällig']))
+        await userEvent.click(screen.getByRole('button', { name }))
+        await waitFor(async () => expect((await db.contracts.get(ca))!.paid['2026-08']).toEqual({ paidOn: todayIso() }))
+        await waitFor(() => expect(screen.queryByRole('button', { name: /August 2026/ })).not.toBeInTheDocument())
+        cleanup()
+        await updateContract(ca, { paid: {} })
+      }
     })
 
     it('zeigt "Nichts überfällig." wenn alles bezahlt oder nicht fällig ist', async () => {

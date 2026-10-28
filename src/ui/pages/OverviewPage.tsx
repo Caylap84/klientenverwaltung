@@ -41,9 +41,11 @@ export default function OverviewPage({ today }: { today?: YearMonth } = {}) {
     return c ? clientDisplayName(c) : ''
   }
   // Eindeutiger Name: bei mehreren Verträgen im selben Monat mit Vertragsnummer
-  const tickLabel = (clientId: string, contractId: string, m: YearMonth) =>
+  // Die Überfällig-Liste hängt ", überfällig" an, damit derselbe Eintrag in beiden Listen unterscheidbar bleibt
+  const tickLabel = (clientId: string, contractId: string, m: YearMonth, isOverdue = false) =>
     `Als bezahlt abhaken: ${nameOf(clientId)}, ${monthLabel(m)}`
     + (coveringCount(clientId, m) > 1 ? `, Vertrag ${numberOf(clientId, contractId)}` : '')
+    + (isOverdue ? ', überfällig' : '')
   const overdue = overdueItems(clients, contracts, now)
   const overdueCents = overdue.reduce((sum, it) => sum + it.cents, 0)
 
@@ -89,7 +91,7 @@ export default function OverviewPage({ today }: { today?: YearMonth } = {}) {
                 </div>
                 <span className="amount">{formatEuro(it.cents)}</span>
                 <button type="button" onClick={() => markPaid(it.contractId, it.month)}
-                  aria-label={tickLabel(it.clientId, it.contractId, it.month)}>
+                  aria-label={tickLabel(it.clientId, it.contractId, it.month, true)}>
                   Als bezahlt abhaken
                 </button>
               </li>
