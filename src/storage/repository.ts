@@ -74,9 +74,9 @@ export async function deleteContract(id: string): Promise<void> {
 
 export async function addPdf(clientId: string, file: File): Promise<string> {
   const id = newId()
-  const data = new Blob([await file.arrayBuffer()], { type: file.type })
+  const data = new Uint8Array(await file.arrayBuffer())
   await db.transaction('rw', db.pdfs, db.meta, async () => {
-    await db.pdfs.add({ id, clientId, name: file.name, addedAt: now(), data })
+    await db.pdfs.add({ id, clientId, name: file.name, type: file.type, addedAt: now(), data })
     await markDirty()
   })
   return id

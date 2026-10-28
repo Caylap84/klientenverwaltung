@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   db, createClient, updateClient, deleteClient, createContract, updateContract,
   deleteContract, addPdf, deletePdf, getMeta, setMeta,
@@ -73,19 +73,14 @@ describe('repository', () => {
 
   it('addPdf speichert Bytes, Namen und addedAt; deletePdf löscht', async () => {
     const a = await createClient()
-    // fake-indexeddb klont jsdom-Blobs nicht (nur Testumgebung): übergebenen Datensatz abfangen
-    const spy = vi.spyOn(db.pdfs, 'add')
-    const id = await addPdf(a, new File(['hallo'], 'Vertrag Müller.pdf', { type: 'application/pdf' }))
-    const p = spy.mock.calls[0][0]
-    spy.mockRestore()
-    expect(p.id).toBe(id)
-    expect(await db.pdfs.get(id)).toBeDefined()
+    const bytes = new Uint8Array([1, 2, 3, 255])
+    const id = await addPdf(a, new File([bytes], 'Vertrag Müller.pdf', { type: 'application/pdf' }))
+    const p = (await db.pdfs.get(id))!
     expect(p.name).toBe('Vertrag Müller.pdf')
     expect(p.clientId).toBe(a)
+    expect(p.type).toBe('application/pdf')
     expect(new Date(p.addedAt).toISOString()).toBe(p.addedAt)
-    expect(p.data).toBeInstanceOf(Blob)
-    expect(p.data.size).toBe(5)
-    expect(p.data.type).toBe('application/pdf')
+    expect(Array.from(p.data)).toEqual([1, 2, 3, 255])
     await deletePdf(id)
     expect(await db.pdfs.get(id)).toBeUndefined()
   })

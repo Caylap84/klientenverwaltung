@@ -45,5 +45,6 @@ export interface PdfDoc {
   clientId: string
   name: string
   addedAt: string
-  data: Blob
+  type: string // MIME-Typ, '' falls unbekannt
+  data: Uint8Array
 }
