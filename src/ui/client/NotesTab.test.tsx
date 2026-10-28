@@ -88,4 +88,17 @@ describe('Notizen', () => {
     expect(await screen.findByText('Noch keine Einträge')).toBeInTheDocument()
     expect(within(document.body).queryByLabelText('Eintrag')).toBeNull()
   })
+
+  it('Datum eines Eintrags kann geleert werden; Eintrag ohne Datum steht unten', async () => {
+    const id = await setup({ log: [{ id: 'a', date: '2026-01-02', text: 'erst' }, { id: 'b', date: '2026-01-01', text: 'zweit' }] })
+    const [first] = screen.getAllByLabelText('Datum (JJJJ-MM-TT)')
+    await userEvent.clear(first)
+    await userEvent.tab()
+    await vi.waitFor(async () => expect((await db.clients.get(id))!.log.find((x) => x.id === 'a')!.date).toBe(''))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await vi.waitFor(() => {
+      const texts = screen.getAllByLabelText('Eintrag').map((t) => (t as HTMLTextAreaElement).value)
+      expect(texts).toEqual(['zweit', 'erst'])
+    })
+  })
 })

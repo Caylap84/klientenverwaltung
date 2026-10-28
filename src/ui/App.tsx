@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Link, Route, Routes } from 'react-router-dom'
 import Layout from './Layout'
 import ClientListPage from './pages/ClientListPage'
 import ClientPage from './pages/ClientPage'
@@ -6,11 +6,11 @@ import BackupPage from './pages/BackupPage'
 import OverviewPage from './pages/OverviewPage'
 import './ui.css'
 
-function Placeholder({ title }: { title: string }) {
+function NotFound() {
   return (
     <section>
-      <h1>{title}</h1>
-      <p>Folgt.</p>
+      <h1>Seite nicht gefunden</h1>
+      <p><Link to="/">Zur Übersicht</Link></p>
     </section>
   )
 }
@@ -23,7 +23,7 @@ export default function App() {
         <Route path="klienten" element={<ClientListPage />} />
         <Route path="klienten/:id" element={<ClientPage />} />
         <Route path="sicherung" element={<BackupPage />} />
-        <Route path="*" element={<Placeholder title="Seite nicht gefunden" />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   )

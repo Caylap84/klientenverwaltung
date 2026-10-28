@@ -42,4 +42,9 @@ describe('logFields', () => {
     const log = [e('a', '2026-01-02'), e('b', '2026-03-01'), e('c', '2026-01-02')]
     expect(sortLogNewestFirst(log).map((x) => x.id)).toEqual(['b', 'c', 'a'])
   })
+
+  it('Einträge ohne Datum stehen unten', () => {
+    const log = [e('leer', ''), e('a', '2026-01-02'), e('b', '2026-03-01'), e('leer2', '')]
+    expect(sortLogNewestFirst(log).map((x) => x.id)).toEqual(['b', 'a', 'leer2', 'leer'])
+  })
 })

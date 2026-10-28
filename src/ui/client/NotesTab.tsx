@@ -25,7 +25,8 @@ export default function NotesTab({ client }: { client: Client }) {
   }
 
   function saveDate(id: string, v: string) {
-    const ok = isIsoDate(v)
+    // Leer ist erlaubt (Einträge ohne Datum stehen unten); sonst echtes Datum JJJJ-MM-TT.
+    const ok = v === '' || isIsoDate(v)
     setHints((h) => ({ ...h, [id]: ok ? '' : 'Bitte im Format JJJJ-MM-TT eingeben' }))
     if (!ok) return false
     return updateLogEntry(client.id, id, { date: v })

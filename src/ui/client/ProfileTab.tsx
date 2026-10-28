@@ -23,7 +23,7 @@ export default function ProfileTab({ client }: { client: Client }) {
   return (
     <div className="profile">
       <TextField id="f-name" label="Name" stored={client.name} onSave={(v) => save('name', v)} autoComplete="off" />
-      <TextField id="f-address" label="Adresse" stored={client.address} onSave={(v) => save('address', v)} />
+      <TextField id="f-address" label="Adresse" multiline rows={3} stored={client.address} onSave={(v) => save('address', v)} />
       <TextField id="f-email" label="E-Mail" stored={client.email} onSave={(v) => save('email', v)} type="email" />
       <TextField id="f-phone" label="Telefon" stored={client.phone} onSave={(v) => save('phone', v)} type="tel" />
       <button type="button" className="danger" onClick={remove}>Klient löschen</button>

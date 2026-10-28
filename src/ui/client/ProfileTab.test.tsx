@@ -30,6 +30,17 @@ describe('Klientenprofil', () => {
     expect(within(panel).queryByRole('radio')).not.toBeInTheDocument()
   })
 
+  it('Adresse ist mehrzeilig (3 Zeilen) und speichert Zeilenumbrüche', async () => {
+    const id = await createClient()
+    await renderProfile(id)
+    const address = await screen.findByLabelText('Adresse')
+    expect(address.tagName).toBe('TEXTAREA')
+    expect(address).toHaveAttribute('rows', '3')
+    await userEvent.type(address, 'Musterstr. 1{Enter}12345 Stadt')
+    await userEvent.tab()
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.address).toBe('Musterstr. 1\n12345 Stadt'))
+  })
+
   it('Eingaben werden beim Verlassen des Feldes gespeichert', async () => {
     const id = await createClient()
     await renderProfile(id)
