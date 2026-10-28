@@ -36,7 +36,7 @@ button, input, select { font: inherit; color: inherit; }
 button { padding: 0.55rem 1rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.danger { color: var(--danger); border-color: var(--danger); }
-input:not([type='radio']), select {
+input:not([type='radio']):not([type='checkbox']), select {
   width: 100%; box-sizing: border-box; padding: 0.55rem 0.7rem;
   border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
 }
@@ -62,3 +62,23 @@ input:not([type='radio']), select {
 .profile { max-width: 32rem; }
 .status { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 1.25rem; padding: 0.5rem 0.9rem 0.7rem; }
 .radio { display: inline-flex; align-items: center; gap: 0.4rem; margin-right: 1.2rem; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.contracts-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.contract { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 1rem; margin-bottom: 1.25rem; }
+.contract h2 { font-size: 1.1rem; margin: 0 0 0.8rem; }
+.contract h3 { font-size: 1rem; margin: 1.1rem 0 0.5rem; }
+.contract-grid { display: grid; gap: 0 1rem; }
+@media (min-width: 768px) { .contract-grid { grid-template-columns: 1fr 1fr; } }
+.derived { margin: 0 0 0.9rem; color: var(--muted); }
+.alert { color: var(--danger); margin: 0.5rem 0; }
+.hour-row { display: grid; grid-template-columns: auto 1fr; gap: 0 0.75rem; align-items: start; padding: 0.5rem 0; border-top: 1px solid var(--border); }
+.hour-row .field { margin-bottom: 0.4rem; }
+.hour-row > :last-child { grid-column: 1 / -1; }
+.hour-row .check { padding-top: 0.6rem; }
+@media (min-width: 768px) { .hour-row { grid-template-columns: auto 12rem 1fr; } .hour-row > :last-child { grid-column: auto; } }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { display: grid; grid-template-columns: 1fr auto; gap: 0.2rem 1rem; align-items: center; padding: 0.5rem 0; border-top: 1px solid var(--border); }
+.timeline .paid-date { grid-column: 1 / -1; max-width: 14rem; }
+.timeline .paid-date .field { margin-bottom: 0; }
+.check { display: inline-flex; align-items: center; gap: 0.4rem; }

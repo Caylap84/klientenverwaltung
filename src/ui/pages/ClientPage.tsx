@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../storage/repository'
 import { clientDisplayName } from '../clientName'
 import ProfileTab from '../client/ProfileTab'
+import ContractsTab from '../client/ContractsTab'
 
 const TABS = ['Stammdaten', 'Verträge', 'Notizen', 'PDFs'] as const
 type Tab = (typeof TABS)[number]
@@ -44,7 +45,9 @@ export default function ClientPage() {
         ))}
       </div>
       <div role="tabpanel">
-        {tab === 'Stammdaten' ? <ProfileTab key={client.id} client={client} /> : <p className="muted">Folgt.</p>}
+        {tab === 'Stammdaten' && <ProfileTab key={client.id} client={client} />}
+        {tab === 'Verträge' && <ContractsTab key={client.id} client={client} />}
+        {tab !== 'Stammdaten' && tab !== 'Verträge' && <p className="muted">Folgt.</p>}
       </div>
     </section>
   )

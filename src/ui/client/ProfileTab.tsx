@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deleteClient, updateClient } from '../../storage/repository'
 import type { Client, Status } from '../../domain/types'
 import { clientDisplayName } from '../clientName'
 import { confirmAction } from '../confirm'
+import TextField from '../TextField'
 
 const STATUS: { value: Status; label: string }[] = [
   { value: 'aktiv', label: 'Aktiv' },
@@ -11,38 +11,12 @@ const STATUS: { value: Status; label: string }[] = [
   { value: 'archiviert', label: 'Archiviert' },
 ]
 
-type TextField = 'name' | 'address' | 'email' | 'phone'
-
-function TextField({ id, label, stored, onSave, type, autoComplete }: {
-  id: string; label: string; stored: string; onSave: (v: string) => void
-  type?: string; autoComplete?: string
-}) {
-  const ref = useRef<HTMLInputElement>(null)
-  const [value, setValue] = useState(stored)
-  // Externe Änderungen übernehmen, aber nie während der Eingabe im fokussierten Feld
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setValue(stored)
-  }, [stored])
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        ref={ref}
-        type={type}
-        autoComplete={autoComplete}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={() => { if (value !== stored) onSave(value) }}
-      />
-    </div>
-  )
-}
+type TextFieldName = 'name' | 'address' | 'email' | 'phone'
 
 export default function ProfileTab({ client }: { client: Client }) {
   const navigate = useNavigate()
 
-  function save(field: TextField, value: string) {
+  function save(field: TextFieldName, value: string) {
     if (value !== client[field]) void updateClient(client.id, { [field]: value })
   }
 
