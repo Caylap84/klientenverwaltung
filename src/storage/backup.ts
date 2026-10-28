@@ -1,4 +1,6 @@
 import type { Client, Contract, PdfDoc } from '../domain/types'
+import { MAX_EURO_CENTS } from '../domain/money'
+import { isIsoDate, isYearMonth } from '../domain/months'
 import { db, getMeta, setMeta } from './repository'
 
 export interface BackupFile {
@@ -130,6 +132,39 @@ function validateBackup(data: unknown): BackupFile {
       !isObj(p) || !isStr(p.id) || !isStr(p.clientId) || !isStr(p.name) ||
       !isStr(p.addedAt) || !isStr(p.type) || !isStr(p.dataBase64) || !isBase64(p.dataBase64)
     ) fail()
+  }
+  // Form und Grenzen der verschachtelten Werte (Meldung nennt die Fehlerart, nicht den Pfad).
+  const reject = (what: string): never => {
+    throw new BackupError(`Die Sicherung enthält ${what}.`)
+  }
+  const isDateOrEmpty = (v: unknown) => isStr(v) && (v === '' || isIsoDate(v))
+  // Grenzen wie in der Oberfläche (Laufzeit ≤ 600 Monate, ≤ 1000 Stunden, Beträge ≤ 1 Mrd. €).
+  const isIntIn = (v: unknown, max: number) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max
+  for (const c of clients as Array<Record<string, unknown>>) {
+    for (const e of c.log as unknown[]) {
+      if (!isObj(e) || !isStr(e.id) || !isDateOrEmpty(e.date) || !isStr(e.text)) {
+        reject('ungültige Dokumentationseinträge')
+      }
+    }
+    uniqueIds(c.log as unknown[])
+  }
+  for (const k of contracts as Array<Record<string, unknown>>) {
+    if (
+      !(k.startMonth === '' || isYearMonth(k.startMonth as string)) ||
+      !isIntIn(k.termMonths, 600) || !isIntIn(k.plannedHours, 1000) ||
+      !isIntIn(k.priceCents, MAX_EURO_CENTS) || !isIntIn(k.hourlyCents, MAX_EURO_CENTS)
+    ) reject('ungültige Vertragswerte (Startmonat, Laufzeit, Stunden oder Beträge)')
+    for (const h of k.hours as unknown[]) {
+      if (!isObj(h) || !isStr(h.id) || typeof h.done !== 'boolean' || !isDateOrEmpty(h.date) || !isStr(h.note)) {
+        reject('ungültige Stunden-Einträge')
+      }
+    }
+    uniqueIds(k.hours as unknown[])
+    for (const [month, entry] of Object.entries(k.paid as Record<string, unknown>)) {
+      if (!isYearMonth(month) || !isObj(entry) || !isDateOrEmpty(entry.paidOn)) {
+        reject('ungültige Zahlungseinträge')
+      }
+    }
   }
   const clientIds = uniqueIds(clients)
   uniqueIds(contracts)

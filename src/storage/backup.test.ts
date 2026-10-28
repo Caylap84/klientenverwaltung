@@ -264,6 +264,59 @@ describe('strenge Validierung', () => {
     })
   }
 
+  const hour = { id: 'h', done: false, date: '', note: '' }
+  const shape: Array<[string, string, RegExp]> = [
+    ['hours:[null] (Absturzfall)', mut((b) => (b.contracts[0].hours = [null])), /Stunden/],
+    ['Stunde ohne id', mut((b) => (b.contracts[0].hours = [{ ...hour, id: 5 }])), /Stunden/],
+    ['Stunde done kein boolean', mut((b) => (b.contracts[0].hours = [{ ...hour, done: 'ja' }])), /Stunden/],
+    ['Stunde Datum ungültig', mut((b) => (b.contracts[0].hours = [{ ...hour, date: '2026-02-30' }])), /Stunden/],
+    ['Stunde Datum kein String', mut((b) => (b.contracts[0].hours = [{ ...hour, date: null }])), /Stunden/],
+    ['Stunde note fehlt', mut((b) => (b.contracts[0].hours = [{ id: 'h', done: false, date: '' }])), /Stunden/],
+    ['doppelte Stunden-IDs im Vertrag', mut((b) => (b.contracts[0].hours = [hour, { ...hour }])), /doppelte/],
+    ['paid-Schlüssel kein Monat', mut((b) => (b.contracts[0].paid = { '2026-13': { paidOn: '' } })), /Zahlung/],
+    ['paid-Wert null', mut((b) => (b.contracts[0].paid = { '2026-01': null })), /Zahlung/],
+    ['paidOn fehlt', mut((b) => (b.contracts[0].paid = { '2026-01': {} })), /Zahlung/],
+    ['paidOn ungültig', mut((b) => (b.contracts[0].paid = { '2026-01': { paidOn: '15.01.2026' } })), /Zahlung/],
+    ['log:[null]', mut((b) => (b.clients[0].log = [null])), /Dokumentation/],
+    ['log ohne text', mut((b) => (b.clients[0].log = [{ id: 'l', date: '' }])), /Dokumentation/],
+    ['log Datum ungültig', mut((b) => (b.clients[0].log = [{ id: 'l', date: 'gestern', text: '' }])), /Dokumentation/],
+    ['log id numerisch', mut((b) => (b.clients[0].log = [{ id: 1, date: '', text: '' }])), /Dokumentation/],
+    ['doppelte log-IDs im Klienten', mut((b) => (b.clients[0].log = [{ id: 'l', date: '', text: '' }, { id: 'l', date: '', text: 'x' }])), /doppelte/],
+    ['startMonth ungültig', mut((b) => (b.contracts[0].startMonth = '2026-1')), /Vertragswerte/],
+    ['termMonths 1e9 (Absturzfall)', mut((b) => (b.contracts[0].termMonths = 1e9)), /Vertragswerte/],
+    ['termMonths 601', mut((b) => (b.contracts[0].termMonths = 601)), /Vertragswerte/],
+    ['termMonths gebrochen', mut((b) => (b.contracts[0].termMonths = 2.5)), /Vertragswerte/],
+    ['termMonths negativ', mut((b) => (b.contracts[0].termMonths = -1)), /Vertragswerte/],
+    ['plannedHours 1001', mut((b) => (b.contracts[0].plannedHours = 1001)), /Vertragswerte/],
+    ['plannedHours gebrochen', mut((b) => (b.contracts[0].plannedHours = 1.5)), /Vertragswerte/],
+    ['priceCents negativ', mut((b) => (b.contracts[0].priceCents = -1)), /Vertragswerte/],
+    ['priceCents gebrochen', mut((b) => (b.contracts[0].priceCents = 0.5)), /Vertragswerte/],
+    ['priceCents zu groß', mut((b) => (b.contracts[0].priceCents = 100_000_000_001)), /Vertragswerte/],
+    ['hourlyCents zu groß', mut((b) => (b.contracts[0].hourlyCents = 1e12)), /Vertragswerte/],
+  ]
+  for (const [label, text, msg] of shape) {
+    it(`Form/Grenzen: ${label}`, () => {
+      expect(() => parseBackup(text)).toThrow(BackupError)
+      expect(() => parseBackup(text)).toThrow(msg)
+    })
+  }
+
+  it('Grenzwerte und leere Werte sind gültig', () => {
+    const ok = mut((b) => {
+      b.contracts[0].startMonth = '2026-01'
+      b.contracts[0].termMonths = 600
+      b.contracts[0].plannedHours = 1000
+      b.contracts[0].priceCents = 100_000_000_000
+      b.contracts[0].hourlyCents = 100_000_000_000
+      b.contracts[0].hours = [hour, { id: 'h2', done: true, date: '2024-02-29', note: 'x' }]
+      b.contracts[0].paid = { '2026-01': { paidOn: '' }, '2026-02': { paidOn: '2026-02-03' } }
+      b.clients[0].log = [{ id: 'l', date: '', text: '' }, { id: 'l2', date: '2026-01-01', text: 'x' }]
+      b.contracts.push({ ...b.contracts[0], id: 'k2', hours: [hour] })
+      b.clients.push({ ...b.clients[0], id: 'c2' })
+    })
+    expect(() => parseBackup(ok)).not.toThrow()
+  })
+
   it('importBackup(ungültig) direkt: DB und safetyCopy unverändert', async () => {
     await seed()
     await importBackup(await buildBackup())
