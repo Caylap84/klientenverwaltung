@@ -35,8 +35,8 @@ export async function createClient(init: Partial<Client> = {}): Promise<string> 
 
 export async function updateClient(id: string, patch: Partial<Client>): Promise<void> {
   await db.transaction('rw', db.clients, db.meta, async () => {
-    await db.clients.update(id, { ...patch, id, updatedAt: now() })
-    await markDirty()
+    // update() legt nie neu an; nur echte Änderungen markieren ungesicherte Daten.
+    if (await db.clients.update(id, { ...patch, id, updatedAt: now() })) await markDirty()
   })
 }
 
@@ -62,8 +62,7 @@ export async function createContract(clientId: string): Promise<string> {
 
 export async function updateContract(id: string, patch: Partial<Contract>): Promise<void> {
   await db.transaction('rw', db.contracts, db.meta, async () => {
-    await db.contracts.update(id, { ...patch, id })
-    await markDirty()
+    if (await db.contracts.update(id, { ...patch, id })) await markDirty()
   })
 }
 

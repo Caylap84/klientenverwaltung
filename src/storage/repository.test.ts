@@ -109,4 +109,18 @@ describe('repository', () => {
     await op()
     expect(await getMeta<boolean>('dirty')).toBe(true)
   })
+
+  it('Updates auf gelöschte Klienten/Verträge sind harmlos: nichts wird wiederbelebt, dirty bleibt', async () => {
+    const c = await createClient({ name: 'Weg' })
+    const k = await createContract(c)
+    await deleteClient(c)
+    await setMeta('dirty', false)
+    await updateClient(c, { name: 'Zombie' })
+    await updateContract(k, { priceCents: 5 })
+    expect(await db.clients.get(c)).toBeUndefined()
+    expect(await db.contracts.get(k)).toBeUndefined()
+    expect(await db.clients.count()).toBe(0)
+    expect(await db.contracts.count()).toBe(0)
+    expect(await getMeta('dirty')).toBe(false)
+  })
 })

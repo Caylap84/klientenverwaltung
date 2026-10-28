@@ -27,7 +27,7 @@ function setup(startId: string, goId?: string) {
 }
 
 describe('ProfileTab: lokaler Feldzustand', () => {
-  it('(a) Wechsel A nach B: B zeigt eigene Werte, Text von A wird nicht in B geschrieben', async () => {
+  it('(a) Wechsel A nach B ohne Blur: Text von A wird bei A gespeichert, nie in B', async () => {
     const a = await createClient({ name: 'Anna' })
     const b = await createClient({ name: 'Bernd' })
     setup(a, b)
@@ -35,13 +35,14 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     fireEvent.change(name, { target: { value: 'Anna Ungespeichert' } })
     fireEvent.click(screen.getByText('gehe'))
     await vi.waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue('Bernd'))
+    await vi.waitFor(async () => expect((await db.clients.get(a))?.name).toBe('Anna Ungespeichert'))
     fireEvent.blur(screen.getByLabelText('Name'))
     await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
     expect((await db.clients.get(b))?.name).toBe('Bernd')
-    expect((await db.clients.get(a))?.name).toBe('Anna')
+    expect((await db.clients.get(a))?.name).toBe('Anna Ungespeichert')
   })
 
-  it('(b) beide Adressen leer: ungespeicherte Eingabe aus A landet nicht in B', async () => {
+  it('(b) beide Adressen leer: ungespeicherte Eingabe aus A landet bei A, nicht in B', async () => {
     const a = await createClient({ name: 'A' })
     const b = await createClient({ name: 'B' })
     setup(a, b)
@@ -53,6 +54,7 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     await userEvent.tab()
     await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
     expect((await db.clients.get(b))?.address).toBe('')
+    expect((await db.clients.get(a))?.address).toBe('Musterstr. 1')
   })
 
   it('(c) Name tippen, dann Reiter klicken: Name wird zuerst gespeichert', async () => {
@@ -85,6 +87,31 @@ describe('ProfileTab: lokaler Feldzustand', () => {
     await vi.waitFor(() => expect(screen.getByLabelText('Adresse')).toHaveValue('Extern 5'))
     expect(screen.getByLabelText('Name')).toHaveValue('Eva Neu')
     expect(screen.getByLabelText('Name')).toHaveFocus()
+  })
+
+  it('Routenwechsel ohne Blur (z. B. Zurück-Geste): Eingabe wird gespeichert', async () => {
+    const id = await createClient({ name: 'Fritz' })
+    render(
+      <MemoryRouter initialEntries={[`/klienten/${id}`]}>
+        <Go to="/sicherung" />
+        <App />
+      </MemoryRouter>,
+    )
+    fireEvent.change(await screen.findByLabelText('Telefon'), { target: { value: '0123' } })
+    fireEvent.click(screen.getByText('gehe'))
+    await screen.findByRole('heading', { name: 'Sicherung' })
+    await vi.waitFor(async () => expect((await db.clients.get(id))?.phone).toBe('0123'))
+  })
+
+  it('externe Änderung an fokussiertem, unberührtem Feld wird beim Blur nicht zurückgesetzt', async () => {
+    const id = await createClient({ name: 'Gina' })
+    setup(id)
+    await userEvent.click(await screen.findByLabelText('Name'))
+    await act(async () => { await updateClient(id, { name: 'Extern' }) })
+    await userEvent.tab()
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
+    expect((await db.clients.get(id))?.name).toBe('Extern')
+    expect(screen.getByLabelText('Name')).toHaveValue('Extern')
   })
 
   it('Tab von Feld zu Feld behält den Fokus im nächsten Feld', async () => {
