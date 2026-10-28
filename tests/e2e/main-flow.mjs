@@ -190,6 +190,8 @@ try {
 
   await run('Klient löschen', async () => {
     await nav('Klienten').click()
+    // Die Übersicht listet den Klienten mehrfach (Überfällig); erst auf der Klientenliste suchen
+    await page.getByRole('heading', { level: 1, name: 'Klienten', exact: true }).waitFor()
     await page.getByRole('link', { name: new RegExp(NAME) }).click()
     page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'Klient löschen' }).click()
@@ -200,6 +202,8 @@ try {
 
   async function verifyClient() {
     await nav('Klienten').click()
+    // Die Übersicht listet den Klienten mehrfach (Überfällig); erst auf der Klientenliste suchen
+    await page.getByRole('heading', { level: 1, name: 'Klienten', exact: true }).waitFor()
     await page.getByRole('link', { name: new RegExp(NAME) }).click()
     await page.getByRole('heading', { level: 1, name: NAME }).waitFor()
     await tab('Verträge').click()
