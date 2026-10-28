@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Contract } from '../../domain/types'
 import { canChangeTerm, monthAmounts, syncHourRows, totalCents } from '../../domain/contract'
-import { contractMonths } from '../../domain/months'
+import { contractMonths, isIsoDate, isYearMonth } from '../../domain/months'
 import { contractTimeline } from '../../domain/overview'
 import { formatEuro, parseEuroToCents } from '../../domain/money'
 import { db, deleteContract } from '../../storage/repository'
@@ -21,6 +21,15 @@ function monthlyDisplay(c: Contract): string {
 
 export default function ContractCard({ contract: c, index }: { contract: Contract; index: number }) {
   const [message, setMessage] = useState('')
+  const [hints, setHints] = useState<Record<string, string>>({})
+  const hint = (id: string) => hints[id]
+  /** Prüft Format; bei Fehler Hinweis zeigen und false liefern (Feld zeigt wieder den gespeicherten Wert). */
+  function validated(id: string, ok: boolean, text: string, save: () => Promise<boolean | void> | void) {
+    setHints((h) => ({ ...h, [id]: ok ? '' : text }))
+    return ok ? save() : false
+  }
+  const MONTH_HINT = 'Bitte im Format JJJJ-MM eingeben'
+  const DATE_HINT = 'Bitte im Format JJJJ-MM-TT eingeben'
   const newId = () => globalThis.crypto.randomUUID()
   const euroSave = (key: 'priceCents' | 'hourlyCents') => async (v: string) => {
     const cents = parseEuroToCents(v)
@@ -111,7 +120,8 @@ export default function ContractCard({ contract: c, index }: { contract: Contrac
       <legend>Vertrag {index + 1}</legend>
       <div className="contract-grid">
         <TextField id={`${c.id}-start`} label="Startmonat" type="month" stored={c.startMonth}
-          onSave={(v) => changeSchedule('startMonth', v)} />
+          hint={hint(`${c.id}-start`)}
+          onSave={(v) => validated(`${c.id}-start`, v === '' || isYearMonth(v), MONTH_HINT, () => changeSchedule('startMonth', v))} />
         <TextField id={`${c.id}-term`} label="Laufzeit in Monaten" inputMode="numeric" stored={String(c.termMonths)}
           onSave={(v) => changeSchedule('termMonths', parseCount(v, MAX_TERM_MONTHS))} />
       </div>
@@ -155,7 +165,8 @@ export default function ContractCard({ contract: c, index }: { contract: Contrac
             <span aria-hidden="true">{i + 1}.</span>
           </label>
           <TextField id={`${h.id}-date`} label={`Datum Stunde ${i + 1}`} type="date" stored={h.date}
-            onSave={(v) => patchRow(h.id, { date: v })} />
+            hint={hint(`${h.id}-date`)}
+            onSave={(v) => validated(`${h.id}-date`, v === '' || isIsoDate(v), DATE_HINT, () => patchRow(h.id, { date: v }))} />
           <TextField id={`${h.id}-note`} label={`Notiz Stunde ${i + 1}`} stored={h.note}
             onSave={(v) => patchRow(h.id, { note: v })} />
         </div>
@@ -177,7 +188,8 @@ export default function ContractCard({ contract: c, index }: { contract: Contrac
                 <div className="paid-date">
                   <TextField id={`${c.id}-${row.month}-paid`} label={`Eingangsdatum ${row.label}`} type="date"
                     stored={c.paid[row.month]?.paidOn ?? ''}
-                    onSave={(v) => savePaidDate(row.month, v)} />
+                    hint={hint(`${c.id}-${row.month}-paid`)}
+                    onSave={(v) => validated(`${c.id}-${row.month}-paid`, v === '' || isIsoDate(v), DATE_HINT, () => savePaidDate(row.month, v))} />
                 </div>
               )}
             </li>

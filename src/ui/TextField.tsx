@@ -10,10 +10,11 @@ interface Props {
   autoComplete?: string
   inputMode?: 'numeric' | 'decimal' | 'text'
   labelHidden?: boolean
+  hint?: string
 }
 
 /** Textfeld mit lokalem Zustand: übernimmt externe Änderungen nur, solange es nicht fokussiert ist, und speichert beim Verlassen. */
-export default function TextField({ id, label, stored, onSave, type, autoComplete, inputMode, labelHidden }: Props) {
+export default function TextField({ id, label, stored, onSave, type, autoComplete, inputMode, labelHidden, hint }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   const [value, setValue] = useState(stored)
   const storedRef = useRef(stored)
@@ -41,6 +42,7 @@ export default function TextField({ id, label, stored, onSave, type, autoComplet
           }
         }}
       />
+      {hint && <p role="alert" className="alert">{hint}</p>}
     </div>
   )
 }

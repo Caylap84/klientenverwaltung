@@ -11,6 +11,19 @@ function isValid(ym: string): boolean {
   return YM_RE.test(ym)
 }
 
+export function isYearMonth(s: string): boolean {
+  return YM_RE.test(s)
+}
+
+/** Echtes Kalenderdatum 'YYYY-MM-DD' (z. B. 2026-02-30 ist ungültig). */
+export function isIsoDate(s: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return false
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  if (mo < 1 || mo > 12 || d < 1) return false
+  return d <= new Date(Date.UTC(y, mo, 0)).getUTCDate()
+}
+
 function parse(ym: YearMonth): [number, number] {
   const [y, m] = ym.split('-').map(Number)
   return [y, m]

@@ -21,3 +21,17 @@ describe('months', () => {
     }
   })
 })
+
+import { isIsoDate, isYearMonth } from './months'
+
+describe('isYearMonth / isIsoDate', () => {
+  it('isYearMonth', () => {
+    expect(isYearMonth('2026-03')).toBe(true)
+    for (const bad of ['', '03/2026', '2026-13', '2026-00', '2026-3', '2026-03-01']) expect(isYearMonth(bad)).toBe(false)
+  })
+  it('isIsoDate', () => {
+    expect(isIsoDate('2026-02-28')).toBe(true)
+    expect(isIsoDate('2024-02-29')).toBe(true)
+    for (const bad of ['', '2026-02-30', '2026-02-29', '2026-13-01', '2026-00-10', '2026-04-31', '2026-04-00', '1.4.2026', '2026-3-1']) expect(isIsoDate(bad)).toBe(false)
+  })
+})

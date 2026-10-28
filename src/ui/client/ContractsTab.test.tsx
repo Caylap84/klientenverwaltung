@@ -269,3 +269,67 @@ describe('Mehrere Verträge', () => {
     expect((await stored(contractId)).hourlyCents).toBe(0)
   })
 })
+
+describe('Formatprüfung Monat/Datum', () => {
+  it('Startmonat: ungültiger Text wird nicht gespeichert, Hinweis erscheint; gültig speichert', async () => {
+    const { contractId } = await setup({ startMonth: '2026-03', termMonths: 2 })
+    const start = asTextInput(screen.getByLabelText('Startmonat'))
+    fireEvent.change(start, { target: { value: '03/2026' } })
+    fireEvent.blur(start)
+    expect(await screen.findByText('Bitte im Format JJJJ-MM eingeben')).toBeInTheDocument()
+    expect((await stored(contractId)).startMonth).toBe('2026-03')
+    await vi.waitFor(() => expect(screen.getByLabelText('Startmonat')).toHaveValue('2026-03'))
+    vi.mocked(confirmAction).mockReturnValue(true)
+    fireEvent.change(screen.getByLabelText('Startmonat'), { target: { value: '2026-05' } })
+    fireEvent.blur(screen.getByLabelText('Startmonat'))
+    await vi.waitFor(async () => expect((await stored(contractId)).startMonth).toBe('2026-05'))
+    expect(screen.queryByText('Bitte im Format JJJJ-MM eingeben')).not.toBeInTheDocument()
+  })
+
+  it('Stundendatum: 2026-02-30 und Freitext abgelehnt, gültiges Datum gespeichert', async () => {
+    const { contractId } = await setup({
+      plannedHours: 1, hours: [{ id: 'h1', done: false, date: '', note: '' }],
+    })
+    for (const bad of ['2026-02-30', '1.4.2026']) {
+      const d = asTextInput(await screen.findByLabelText('Datum Stunde 1'))
+      fireEvent.change(d, { target: { value: bad } })
+      fireEvent.blur(d)
+      expect(await screen.findByText('Bitte im Format JJJJ-MM-TT eingeben')).toBeInTheDocument()
+      expect((await stored(contractId)).hours[0].date).toBe('')
+      await vi.waitFor(() => expect(screen.getByLabelText('Datum Stunde 1')).toHaveValue(''))
+    }
+    const d = screen.getByLabelText('Datum Stunde 1')
+    fireEvent.change(d, { target: { value: '2026-02-27' } })
+    fireEvent.blur(d)
+    await vi.waitFor(async () => expect((await stored(contractId)).hours[0].date).toBe('2026-02-27'))
+    expect(screen.queryByText('Bitte im Format JJJJ-MM-TT eingeben')).not.toBeInTheDocument()
+  })
+
+  it('Eingangsdatum: ungültig abgelehnt, gültig gespeichert', async () => {
+    const { contractId } = await setup({
+      startMonth: '2026-03', termMonths: 1, paid: { '2026-03': { paidOn: '2026-03-05' } },
+    })
+    const d = asTextInput(await screen.findByLabelText('Eingangsdatum März 2026'))
+    fireEvent.change(d, { target: { value: '15.03.2026' } })
+    fireEvent.blur(d)
+    expect(await screen.findByText('Bitte im Format JJJJ-MM-TT eingeben')).toBeInTheDocument()
+    expect((await stored(contractId)).paid['2026-03'].paidOn).toBe('2026-03-05')
+    await vi.waitFor(() => expect(screen.getByLabelText('Eingangsdatum März 2026')).toHaveValue('2026-03-05'))
+    fireEvent.change(screen.getByLabelText('Eingangsdatum März 2026'), { target: { value: '2026-03-15' } })
+    fireEvent.blur(screen.getByLabelText('Eingangsdatum März 2026'))
+    await vi.waitFor(async () => expect((await stored(contractId)).paid['2026-03'].paidOn).toBe('2026-03-15'))
+  })
+
+  it('Euro-Eingabe 12.50 wird als 12,50 gespeichert und angezeigt', async () => {
+    const { contractId } = await setup()
+    await edit('Stundenpreis in €', '12.50')
+    await vi.waitFor(async () => expect((await stored(contractId)).hourlyCents).toBe(1250))
+    await vi.waitFor(() => expect(screen.getByLabelText('Stundenpreis in €')).toHaveValue('12,50'))
+  })
+})
+
+/** Simuliert Browser ohne native Monats-/Datumsfelder (Textfeld-Rückfall). */
+function asTextInput(el: HTMLElement) {
+  el.setAttribute('type', 'text')
+  return el
+}

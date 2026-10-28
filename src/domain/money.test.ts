@@ -7,6 +7,19 @@ describe('parseEuroToCents', () => {
     expect(parseEuroToCents('12,5')).toBe(1250)
     expect(parseEuroToCents('100')).toBe(10000)
   })
+  it('Punkt: Tausendertrenner nur bei Dreiergruppen, sonst Dezimalpunkt', () => {
+    expect(parseEuroToCents('1.234')).toBe(123400)
+    expect(parseEuroToCents('1.234.567')).toBe(123456700)
+    expect(parseEuroToCents('12.5')).toBe(1250)
+    expect(parseEuroToCents('12.50')).toBe(1250)
+    expect(parseEuroToCents('0.99')).toBe(99)
+    expect(parseEuroToCents('12,50')).toBe(1250)
+    expect(parseEuroToCents('1.234,5')).toBe(123450)
+  })
+  it('Fehlformen ergeben 0', () => {
+    for (const bad of ['1..2', '1.2.3', '12.345,6.7', '1.2345', '.5', '1,2,3', '12.'])
+      expect(parseEuroToCents(bad)).toBe(0)
+  })
   it('liefert 0 bei ungültiger Eingabe', () => {
     expect(parseEuroToCents('')).toBe(0)
     expect(parseEuroToCents('abc')).toBe(0)
