@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { db, createClient, createContract, updateContract } from '../../storage/repository'
@@ -69,22 +69,42 @@ describe('Preis', () => {
     expect(await screen.findByLabelText('Preis in € gesamt')).toHaveValue('100,00')
   })
 
-  it('Unsinn in Zahlenfeldern ergibt 0, nie NaN', async () => {
+  it('Unsinn in Zähl-Feldern ergibt 0, nie NaN', async () => {
     const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000, hourlyCents: 500, plannedHours: 0 })
     vi.mocked(confirmAction).mockReturnValue(true)
-    await edit('Preis in € pro Monat', 'abc')
-    await edit('Stundenpreis in €', '€€')
     await edit('Laufzeit in Monaten', 'x')
     await edit('Geplante Stunden', '-3')
-    await vi.waitFor(async () => {
-      const c = await stored(contractId)
-      expect(c.priceCents).toBe(0)
-      expect(c.hourlyCents).toBe(0)
-      expect(c.termMonths).toBe(0)
-    })
+    await vi.waitFor(async () => expect((await stored(contractId)).termMonths).toBe(0))
     const c = await stored(contractId)
     expect([c.priceCents, c.hourlyCents, c.termMonths, c.plannedHours].every(Number.isFinite)).toBe(true)
     expect(c.plannedHours).toBe(0)
+  })
+
+  it('ungültiger Euro-Betrag: nichts gespeichert, Feld springt zurück, Hinweis', async () => {
+    const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000, hourlyCents: 500 })
+    for (const bad of ['abc', '50 Euro', '-5', '12,505']) {
+      await edit('Preis in € pro Monat', bad)
+      expect(await screen.findByRole('alert')).toHaveTextContent('Bitte einen Betrag wie 12,50 eingeben')
+      expect(screen.getByLabelText('Preis in € pro Monat')).toHaveValue('100,00')
+    }
+    await edit('Stundenpreis in €', '€€')
+    await vi.waitFor(() => expect(screen.getByLabelText('Stundenpreis in €')).toHaveValue('5,00'))
+    expect(screen.getAllByRole('alert')).toHaveLength(2)
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+    const c = await stored(contractId)
+    expect(c.priceCents).toBe(10000)
+    expect(c.hourlyCents).toBe(500)
+  })
+
+  it('gültiger Betrag nach ungültigem entfernt den Hinweis; leeres Feld ergibt 0', async () => {
+    const { contractId } = await setup({ startMonth: '2026-03', termMonths: 6, priceCents: 10000, hourlyCents: 500 })
+    await edit('Preis in € pro Monat', '5o')
+    await screen.findByRole('alert')
+    await edit('Preis in € pro Monat', '12.50')
+    await vi.waitFor(async () => expect((await stored(contractId)).priceCents).toBe(1250))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await edit('Stundenpreis in €', '')
+    await vi.waitFor(async () => expect((await stored(contractId)).hourlyCents).toBe(0))
   })
 })
 

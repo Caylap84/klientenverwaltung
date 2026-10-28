@@ -3,7 +3,7 @@ import type { Contract } from '../../domain/types'
 import { canChangeTerm, monthAmounts, syncHourRows, totalCents } from '../../domain/contract'
 import { contractMonths, isIsoDate, isYearMonth } from '../../domain/months'
 import { contractTimeline } from '../../domain/overview'
-import { formatEuro, parseEuroToCents } from '../../domain/money'
+import { formatEuro, parseEuro } from '../../domain/money'
 import { db, deleteContract } from '../../storage/repository'
 import { confirmAction } from '../confirm'
 import TextField from '../TextField'
@@ -31,12 +31,16 @@ export default function ContractCard({ contract: c, index }: { contract: Contrac
   const MONTH_HINT = 'Bitte im Format JJJJ-MM eingeben'
   const DATE_HINT = 'Bitte im Format JJJJ-MM-TT eingeben'
   const newId = () => globalThis.crypto.randomUUID()
-  const euroSave = (key: 'priceCents' | 'hourlyCents') => async (v: string) => {
-    const cents = parseEuroToCents(v)
-    setMessage('')
-    const cur = await db.contracts.get(c.id)
-    if (!cur || cents === cur[key]) return false
-    await patchContract(c.id, () => ({ [key]: cents }))
+  const EURO_HINT = 'Bitte einen Betrag wie 12,50 eingeben'
+  /** Ungültiger Betrag: nichts speichern, Feld zurücksetzen, Hinweis zeigen (nie stillschweigend 0 €). */
+  const euroSave = (key: 'priceCents' | 'hourlyCents', hintId: string) => (v: string) => {
+    const cents = parseEuro(v)
+    return validated(hintId, cents !== null, EURO_HINT, async () => {
+      setMessage('')
+      const cur = await db.contracts.get(c.id)
+      if (!cur || cents === cur[key]) return false
+      await patchContract(c.id, () => ({ [key]: cents! }))
+    })
   }
 
   /**
@@ -142,9 +146,11 @@ export default function ContractCard({ contract: c, index }: { contract: Contrac
       </fieldset>
       <div className="contract-grid">
         <TextField id={`${c.id}-price`} label={monthly ? 'Preis in € pro Monat' : 'Preis in € gesamt'}
-          inputMode="decimal" stored={centsToInput(c.priceCents)} onSave={euroSave('priceCents')} />
+          inputMode="decimal" stored={centsToInput(c.priceCents)} hint={hint(`${c.id}-price`)}
+          onSave={euroSave('priceCents', `${c.id}-price`)} />
         <TextField id={`${c.id}-hourly`} label="Stundenpreis in €" inputMode="decimal"
-          stored={centsToInput(c.hourlyCents)} onSave={euroSave('hourlyCents')} />
+          stored={centsToInput(c.hourlyCents)} hint={hint(`${c.id}-hourly`)}
+          onSave={euroSave('hourlyCents', `${c.id}-hourly`)} />
       </div>
       <p className="derived">
         {monthly ? `Gesamtpreis: ${formatEuro(totalCents(c))}` : `Monatspreis: ${monthlyDisplay(c)}`}
