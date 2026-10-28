@@ -16,7 +16,9 @@ describe('parseEuroToCents', () => {
 
 describe('formatEuro', () => {
   it('formatiert deutsch', () => {
-    expect(formatEuro(123456).replace(/ /g, ' ')).toBe('1.234,56 €')
+    const out = formatEuro(123456)
+    expect(out).toMatch(/^1\.234,56[\u00a0\u202f]\u20ac$/)
+    expect(out).not.toContain('\u0020')
   })
 })
 
