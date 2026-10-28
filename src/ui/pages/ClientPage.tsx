@@ -5,6 +5,8 @@ import { db } from '../../storage/repository'
 import { clientDisplayName } from '../clientName'
 import ProfileTab from '../client/ProfileTab'
 import ContractsTab from '../client/ContractsTab'
+import NotesTab from '../client/NotesTab'
+import PdfTab from '../client/PdfTab'
 
 const TABS = ['Stammdaten', 'Verträge', 'Notizen', 'PDFs'] as const
 type Tab = (typeof TABS)[number]
@@ -47,7 +49,8 @@ export default function ClientPage() {
       <div role="tabpanel">
         {tab === 'Stammdaten' && <ProfileTab key={client.id} client={client} />}
         {tab === 'Verträge' && <ContractsTab key={client.id} client={client} />}
-        {tab !== 'Stammdaten' && tab !== 'Verträge' && <p className="muted">Folgt.</p>}
+        {tab === 'Notizen' && <NotesTab key={client.id} client={client} />}
+        {tab === 'PDFs' && <PdfTab key={client.id} clientId={client.id} />}
       </div>
     </section>
   )
