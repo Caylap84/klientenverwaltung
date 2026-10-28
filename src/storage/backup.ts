@@ -7,7 +7,7 @@ export interface BackupFile {
   exportedAt: string
   clients: Client[]
   contracts: Contract[]
-  pdfs: Array<Omit<PdfDoc, 'data'> & { dataBase64: string }>
+  pdfs: Array<Omit<PdfDoc, 'size'> & { dataBase64: string }>
 }
 
 export class BackupError extends Error {
@@ -46,18 +46,26 @@ export function backupFileName(now: Date = new Date()): string {
 }
 
 export async function buildBackup(): Promise<BackupFile> {
-  const [clients, contracts, pdfs] = await Promise.all([
-    db.clients.toArray(),
-    db.contracts.toArray(),
-    db.pdfs.toArray(),
-  ])
+  const [clients, contracts, pdfs, blobs] = await db.transaction(
+    'r', db.clients, db.contracts, db.pdfs, db.pdfData,
+    () => Promise.all([
+      db.clients.toArray(),
+      db.contracts.toArray(),
+      db.pdfs.toArray(),
+      db.pdfData.toArray(),
+    ]),
+  )
+  const bytes = new Map(blobs.map((b) => [b.id, b.data]))
   return {
     format: 'klientenverwaltung',
     version: 1,
     exportedAt: new Date().toISOString(),
     clients,
     contracts,
-    pdfs: pdfs.map(({ data, ...rest }) => ({ ...rest, dataBase64: bytesToBase64(data) })),
+    pdfs: pdfs.map(({ size: _size, ...rest }) => ({
+      ...rest,
+      dataBase64: bytesToBase64(bytes.get(rest.id) ?? new Uint8Array()),
+    })),
   }
 }
 
@@ -175,18 +183,20 @@ export async function describeDifference(file: BackupFile): Promise<{
 async function replaceAll(file: BackupFile, dirty: boolean): Promise<void> {
   const valid = validateBackup(file)
   // Dekodieren vor der Transaktion: Fehler hier berühren die Daten nicht.
-  const pdfs: PdfDoc[] = valid.pdfs.map(({ dataBase64, ...rest }) => ({
-    ...rest,
-    data: base64ToBytes(dataBase64),
-  }))
-  await db.transaction('rw', db.clients, db.contracts, db.pdfs, db.meta, async () => {
+  const decoded = valid.pdfs.map(({ dataBase64, ...rest }) => ({ rest, data: base64ToBytes(dataBase64) }))
+  // size wird immer aus den dekodierten Bytes berechnet, nie aus der Datei übernommen.
+  const pdfs: PdfDoc[] = decoded.map(({ rest, data }) => ({ ...rest, size: data.byteLength }))
+  const blobs = decoded.map(({ rest, data }) => ({ id: rest.id, data }))
+  await db.transaction('rw', db.clients, db.contracts, db.pdfs, db.pdfData, db.meta, async () => {
     const previous = await buildBackup()
     await db.clients.clear()
     await db.contracts.clear()
     await db.pdfs.clear()
+    await db.pdfData.clear()
     await db.clients.bulkAdd(valid.clients)
     await db.contracts.bulkAdd(valid.contracts)
     await db.pdfs.bulkAdd(pdfs)
+    await db.pdfData.bulkAdd(blobs)
     await setMeta('safetyCopy', previous)
     await setMeta('dirty', dirty)
   })

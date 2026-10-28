@@ -24,8 +24,9 @@ async function seed() {
   })
   await db.pdfs.add({
     id: 'p1', clientId: cid, name: 'a.pdf', addedAt: '2026-01-01T00:00:00.000Z',
-    type: 'application/pdf', data: new Uint8Array([1, 2, 3, 255]),
+    type: 'application/pdf', size: 4,
   })
+  await db.pdfData.add({ id: 'p1', data: new Uint8Array([1, 2, 3, 255]) })
   return cid
 }
 
@@ -58,7 +59,8 @@ describe('Round-trip', () => {
     expect(await db.clients.toArray()).toEqual(clients)
     expect(await db.contracts.toArray()).toEqual(contracts)
     const pdf = (await db.pdfs.get('p1'))!
-    expect(Array.from(pdf.data)).toEqual([1, 2, 3, 255])
+    expect(Array.from((await db.pdfData.get('p1'))!.data)).toEqual([1, 2, 3, 255])
+    expect(pdf.size).toBe(4)
     expect(pdf.type).toBe('application/pdf')
     expect(pdf.name).toBe('a.pdf')
   })
@@ -154,7 +156,7 @@ describe('importBackup / Sicherheitskopie', () => {
     expect(await restoreSafetyCopy()).toBe(true)
     expect(await db.clients.toArray()).toEqual(oldClients)
     expect(await db.contracts.count()).toBe(1)
-    expect(Array.from((await db.pdfs.get('p1'))!.data)).toEqual([1, 2, 3, 255])
+    expect(Array.from((await db.pdfData.get('p1'))!.data)).toEqual([1, 2, 3, 255])
     expect(await getMeta('dirty')).toBe(true)
   })
 
@@ -176,7 +178,7 @@ describe('importBackup / Sicherheitskopie', () => {
     vi.restoreAllMocks()
     expect(await db.clients.toArray()).toEqual(oldClients)
     expect(await db.contracts.toArray()).toEqual(oldContracts)
-    expect(Array.from((await db.pdfs.get('p1'))!.data)).toEqual([1, 2, 3, 255])
+    expect(Array.from((await db.pdfData.get('p1'))!.data)).toEqual([1, 2, 3, 255])
     expect(await getMeta('dirty')).toBe(true)
   })
 })
@@ -200,9 +202,11 @@ describe('Sicherheitskopie: Tausch und Schutz', () => {
     await expect(importBackup(bad)).rejects.toThrow(BackupError)
     expect(await getMeta('safetyCopy')).toEqual(copyBefore)
 
-    vi.spyOn(db.pdfs, 'bulkAdd').mockRejectedValue(new Error('Schreibfehler'))
+    const pdfsBefore = [await db.pdfs.count(), await db.pdfData.count()]
+    vi.spyOn(db.pdfData, 'bulkAdd').mockRejectedValue(new Error('Schreibfehler'))
     await expect(importBackup(await fileWith('C'))).rejects.toThrow()
     vi.restoreAllMocks()
+    expect([await db.pdfs.count(), await db.pdfData.count()]).toEqual(pdfsBefore)
     expect(await getMeta('safetyCopy')).toEqual(copyBefore)
     expect((await db.clients.toArray()).map((c) => c.name)).toEqual(['A'])
 
@@ -296,5 +300,34 @@ describe('describeDifference', () => {
     const d = await describeDifference(file)
     expect(d.fileIsOlder).toBe(false)
     expect(d.localLastExportAt).toBeUndefined()
+  })
+})
+
+describe('PDF-Metadaten und Bytes getrennt', () => {
+  it('size wird beim Import aus den Bytes berechnet, nicht aus der Datei', async () => {
+    await seed()
+    const f = await buildBackup()
+    ;(f.pdfs[0] as unknown as Record<string, unknown>).size = 999999
+    await importBackup(f)
+    expect((await db.pdfs.get('p1'))!.size).toBe(4)
+    expect(await db.pdfData.count()).toBe(1)
+  })
+
+  it('Sicherung enthält kein size-Feld, Format bleibt dataBase64', async () => {
+    await seed()
+    const f = await buildBackup()
+    expect(Object.keys(f.pdfs[0]).sort()).toEqual(['addedAt', 'clientId', 'dataBase64', 'id', 'name', 'type'])
+    expect(f.pdfs[0].dataBase64).toBe(bytesToBase64(new Uint8Array([1, 2, 3, 255])))
+  })
+
+  it('fehlgeschlagener Import lässt pdfs und pdfData unverändert', async () => {
+    await seed()
+    const f = await buildBackup()
+    f.pdfs[0].dataBase64 = bytesToBase64(new Uint8Array([9, 9]))
+    vi.spyOn(db.pdfData, 'bulkAdd').mockRejectedValue(new Error('Schreibfehler'))
+    await expect(importBackup(f)).rejects.toThrow()
+    vi.restoreAllMocks()
+    expect((await db.pdfs.get('p1'))!.size).toBe(4)
+    expect(Array.from((await db.pdfData.get('p1'))!.data)).toEqual([1, 2, 3, 255])
   })
 })

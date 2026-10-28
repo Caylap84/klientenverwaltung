@@ -46,5 +46,11 @@ export interface PdfDoc {
   name: string
   addedAt: string
   type: string // MIME-Typ, '' falls unbekannt
+  size: number // Bytes
+}
+
+/** Dateiinhalt getrennt von den Metadaten, damit Listen keine Bytes laden. */
+export interface PdfData {
+  id: string // = PdfDoc.id
   data: Uint8Array
 }

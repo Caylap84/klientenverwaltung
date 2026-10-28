@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Client, Contract, PdfDoc } from '../domain/types'
+import type { Client, Contract, PdfDoc, PdfData } from '../domain/types'
 
 // Schlüssel: 'dirty' (boolean), 'lastExportAt' (string), 'safetyCopy' (BackupFile | null)
 export interface Meta {
@@ -11,6 +11,7 @@ export class KlientenDb extends Dexie {
   clients!: Table<Client, string>
   contracts!: Table<Contract, string>
   pdfs!: Table<PdfDoc, string>
+  pdfData!: Table<PdfData, string>
   meta!: Table<Meta, string>
 
   constructor(name = 'klientenverwaltung') {
@@ -19,6 +20,7 @@ export class KlientenDb extends Dexie {
       clients: 'id',
       contracts: 'id, clientId',
       pdfs: 'id, clientId',
+      pdfData: 'id',
       meta: 'key',
     })
   }

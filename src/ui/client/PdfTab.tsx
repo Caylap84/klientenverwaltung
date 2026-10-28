@@ -1,19 +1,16 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { addPdf, db, deletePdf } from '../../storage/repository'
+import { addPdf, db, deletePdf, getPdfData } from '../../storage/repository'
 import { confirmAction } from '../confirm'
-import { byteSize, downloadPdf, formatDateDe, formatSize, openPdf, pdfRejection } from './pdfActions'
-
-interface Row { id: string; name: string; addedAt: string; size: number }
+import { downloadPdf, formatDateDe, formatSize, openPdf, pdfRejection } from './pdfActions'
 
 export default function PdfTab({ clientId }: { clientId: string }) {
   const [errors, setErrors] = useState<string[]>([])
   const input = useRef<HTMLInputElement>(null)
-  // Die Bytes werden nur kurz zum Ermitteln der Größe geladen und nicht im State gehalten.
+  // Nur Metadaten (db.pdfs); die Bytes liegen in db.pdfData und werden erst beim Öffnen/Herunterladen geladen.
   const rows = useLiveQuery(
-    async (): Promise<Row[]> =>
+    async () =>
       (await db.pdfs.where('clientId').equals(clientId).toArray())
-        .map((p) => ({ id: p.id, name: p.name, addedAt: p.addedAt, size: byteSize(p.data) }))
         .sort((a, b) => a.addedAt.localeCompare(b.addedAt) || a.name.localeCompare(b.name, 'de')),
     [clientId],
   )
@@ -30,9 +27,11 @@ export default function PdfTab({ clientId }: { clientId: string }) {
     setErrors(errs)
   }
 
-  async function withData(id: string, fn: (data: Uint8Array, name: string) => void) {
-    const doc = await db.pdfs.get(id)
-    if (doc) fn(doc.data, doc.name)
+  async function withData(id: string, name: string, fn: (data: Uint8Array, name: string) => void) {
+    const data = await getPdfData(id)
+    if (!data) { setErrors([`Der Inhalt von „${name}“ wurde nicht gefunden.`]); return }
+    setErrors([])
+    fn(data, name)
   }
 
   return (
@@ -50,7 +49,7 @@ export default function PdfTab({ clientId }: { clientId: string }) {
       </div>
       {errors.length > 0 && (
         <div role="alert" className="alert">
-          {errors.map((m) => <p key={m}>{m}</p>)}
+          {errors.map((m, i) => <p key={i}>{m}</p>)}
         </div>
       )}
       {rows && rows.length === 0 && <p className="muted">Noch keine Dokumente</p>}
@@ -60,8 +59,8 @@ export default function PdfTab({ clientId }: { clientId: string }) {
             <strong>{r.name}</strong>
             <span className="muted"> {formatDateDe(r.addedAt)} · {formatSize(r.size)}</span>
             <span className="pdf-actions">
-              <button type="button" aria-label={`${r.name} öffnen`} onClick={() => void withData(r.id, (d) => openPdf(d))}>Öffnen</button>
-              <button type="button" aria-label={`${r.name} herunterladen`} onClick={() => void withData(r.id, (d, n) => downloadPdf(d, n))}>Herunterladen</button>
+              <button type="button" aria-label={`${r.name} öffnen`} onClick={() => void withData(r.id, r.name, (d) => openPdf(d))}>Öffnen</button>
+              <button type="button" aria-label={`${r.name} herunterladen`} onClick={() => void withData(r.id, r.name, (d, n) => downloadPdf(d, n))}>Herunterladen</button>
               <button
                 type="button"
                 aria-label={`${r.name} löschen`}

@@ -41,9 +41,11 @@ export async function updateClient(id: string, patch: Partial<Client>): Promise<
 }
 
 export async function deleteClient(id: string): Promise<void> {
-  await db.transaction('rw', db.clients, db.contracts, db.pdfs, db.meta, async () => {
+  await db.transaction('rw', db.clients, db.contracts, db.pdfs, db.pdfData, db.meta, async () => {
     await db.contracts.where('clientId').equals(id).delete()
-    await db.pdfs.where('clientId').equals(id).delete()
+    const pdfIds = await db.pdfs.where('clientId').equals(id).primaryKeys()
+    await db.pdfData.bulkDelete(pdfIds)
+    await db.pdfs.bulkDelete(pdfIds)
     await db.clients.delete(id)
     await markDirty()
   })
@@ -75,16 +77,22 @@ export async function deleteContract(id: string): Promise<void> {
 export async function addPdf(clientId: string, file: File): Promise<string> {
   const id = newId()
   const data = new Uint8Array(await file.arrayBuffer())
-  await db.transaction('rw', db.pdfs, db.meta, async () => {
-    await db.pdfs.add({ id, clientId, name: file.name, type: file.type, addedAt: now(), data })
+  await db.transaction('rw', db.pdfs, db.pdfData, db.meta, async () => {
+    await db.pdfs.add({ id, clientId, name: file.name, type: file.type, addedAt: now(), size: data.byteLength })
+    await db.pdfData.add({ id, data })
     await markDirty()
   })
   return id
 }
 
 export async function deletePdf(id: string): Promise<void> {
-  await db.transaction('rw', db.pdfs, db.meta, async () => {
+  await db.transaction('rw', db.pdfs, db.pdfData, db.meta, async () => {
+    await db.pdfData.delete(id)
     await db.pdfs.delete(id)
     await markDirty()
   })
+}
+
+export async function getPdfData(id: string): Promise<Uint8Array | undefined> {
+  return (await db.pdfData.get(id))?.data
 }

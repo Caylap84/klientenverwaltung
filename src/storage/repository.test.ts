@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   db, createClient, updateClient, deleteClient, createContract, updateContract,
-  deleteContract, addPdf, deletePdf, getMeta, setMeta,
+  deleteContract, addPdf, deletePdf, getPdfData, getMeta, setMeta,
 } from './repository'
 
 async function clearAll() {
@@ -44,7 +44,9 @@ describe('repository', () => {
     await createContract(b)
     await addPdf(a, new File(['x'], 'a.pdf'))
     await addPdf(b, new File(['y'], 'b.pdf'))
+    expect(await db.pdfData.count()).toBe(2)
     await deleteClient(a)
+    expect(await db.pdfData.count()).toBe(1)
     expect(await db.clients.get(a)).toBeUndefined()
     expect(await db.contracts.where('clientId').equals(a).count()).toBe(0)
     expect(await db.pdfs.where('clientId').equals(a).count()).toBe(0)
@@ -80,9 +82,11 @@ describe('repository', () => {
     expect(p.clientId).toBe(a)
     expect(p.type).toBe('application/pdf')
     expect(new Date(p.addedAt).toISOString()).toBe(p.addedAt)
-    expect(Array.from(p.data)).toEqual([1, 2, 3, 255])
+    expect(p.size).toBe(4)
+    expect(Array.from((await getPdfData(id))!)).toEqual([1, 2, 3, 255])
     await deletePdf(id)
     expect(await db.pdfs.get(id)).toBeUndefined()
+    expect(await getPdfData(id)).toBeUndefined()
   })
 
   it('setMeta/getMeta, setMeta setzt dirty nicht', async () => {

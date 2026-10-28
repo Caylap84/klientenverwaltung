@@ -11,15 +11,6 @@ export function pdfRejection(f: { type: string; name: string; size: number }): s
   return null
 }
 
-/**
- * Größe in Bytes. Dexie klont Ergebnisse von Live-Queries per deepClone; über Realm-Grenzen
- * (z. B. jsdom) wird ein Uint8Array dabei zu einem Objekt mit Indexschlüsseln, dessen
- * byteLength nicht lesbar ist. Im Browser greift der erste Zweig.
- */
-export function byteSize(d: Uint8Array): number {
-  try { return d.byteLength } catch { return Object.keys(d).length }
-}
-
 export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`
@@ -49,5 +40,5 @@ export function downloadPdf(data: Uint8Array, name: string): void {
   document.body.appendChild(a)
   a.click()
   a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 0)
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }

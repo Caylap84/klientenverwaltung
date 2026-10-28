@@ -14,7 +14,13 @@ beforeEach(async () => {
   vi.mocked(confirmAction).mockReset()
   vi.mocked(confirmAction).mockReturnValue(true)
 })
-afterEach(() => { vi.restoreAllMocks() })
+const origCreate = URL.createObjectURL
+const origRevoke = URL.revokeObjectURL
+afterEach(() => {
+  vi.restoreAllMocks()
+  URL.createObjectURL = origCreate
+  URL.revokeObjectURL = origRevoke
+})
 
 async function setup() {
   const id = await createClient({ name: 'Anna' })
@@ -39,7 +45,8 @@ describe('PDFs', () => {
     expect(await screen.findByText('Vertrag Müller äöü.pdf')).toBeInTheDocument()
     const docs = await db.pdfs.where('clientId').equals(id).toArray()
     expect(docs.map((d) => d.name)).toEqual(['Vertrag Müller äöü.pdf'])
-    expect(docs[0].data.byteLength).toBe(13)
+    expect(docs[0].size).toBe(13)
+    expect((await db.pdfData.get(docs[0].id))!.data.byteLength).toBe(13)
     expect(screen.getByText(/\d{2}\.\d{2}\.\d{4} · 1 KB/)).toBeInTheDocument()
   })
 
@@ -80,7 +87,10 @@ describe('PDFs', () => {
     })
     await userEvent.click(screen.getByRole('button', { name: 'a.pdf herunterladen' }))
     await vi.waitFor(() => expect(click).toHaveBeenCalled())
-    await vi.waitFor(() => expect(revoke).toHaveBeenCalledWith('blob:x'))
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    await userEvent.click(screen.getByRole('button', { name: 'a.pdf herunterladen' }))
+    await vi.waitFor(() => expect(timers.mock.calls.some(([, ms]) => ms === 10_000)).toBe(true))
+    expect(revoke).not.toHaveBeenCalledWith('blob:x')
   })
 
   it('Löschen entfernt das PDF nach Bestätigung', async () => {
@@ -93,5 +103,20 @@ describe('PDFs', () => {
     await userEvent.click(screen.getByRole('button', { name: 'a.pdf löschen' }))
     await vi.waitFor(async () => expect(await db.pdfs.count()).toBe(0))
     expect(await screen.findByText('Noch keine Dokumente')).toBeInTheDocument()
+  })
+
+  it('fehlende Bytes ergeben eine Meldung statt eines Absturzes', async () => {
+    await setup()
+    await upload(pdf('a.pdf'))
+    await screen.findByText('a.pdf')
+    await db.pdfData.clear()
+    await userEvent.click(screen.getByRole('button', { name: 'a.pdf öffnen' }))
+    expect(await screen.findByText('Der Inhalt von „a.pdf“ wurde nicht gefunden.')).toBeInTheDocument()
+  })
+
+  it('zwei abgelehnte Dateien mit gleichem Namen werden beide gemeldet', async () => {
+    await setup()
+    await upload(new File(['x'], 'b.png', { type: 'image/png' }), new File(['y'], 'b.png', { type: 'image/png' }))
+    expect(await screen.findAllByText('„b.png“ ist keine PDF-Datei.')).toHaveLength(2)
   })
 })
