@@ -43,7 +43,9 @@ export default function TextField({ id, label, stored, onSave, type, autoComplet
   useEffect(() => { onSaveRef.current = onSave })
   useEffect(() => {
     storedRef.current = stored
-    if (document.activeElement !== ref.current) {
+    // Eine ausstehende Eingabe wird nie durch einen Re-Sync verworfen – auch nicht, wenn das Feld
+    // (noch) nicht fokussiert ist, z. B. wenn die Eingabe vor dem ersten Effekt-Lauf eintrifft.
+    if (!editedRef.current && document.activeElement !== ref.current) {
       editedRef.current = false
       valueRef.current = stored
       setValueState(stored)

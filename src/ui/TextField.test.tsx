@@ -72,6 +72,18 @@ describe('TextField', () => {
     expect(onSave).toHaveBeenCalledExactlyOnceWith('alt!')
   })
 
+  it('nicht fokussiert, aber bearbeitet: ein Re-Sync verwirft die Eingabe nicht, Unmount speichert sie', () => {
+    // Regression: Die Eingabe kann vor dem Lauf des [stored]-Effekts eintreffen (unter Last), das Feld
+    // ist dann nicht fokussiert. Der Effekt darf die Eingabe nicht zurücksetzen.
+    const { input, onSave, rerender, unmount } = setup('alt')
+    expect(document.activeElement).not.toBe(input)
+    fireEvent.change(input, { target: { value: 'neu' } })
+    rerender('alt2')
+    expect(input).toHaveValue('neu')
+    unmount()
+    expect(onSave).toHaveBeenCalledExactlyOnceWith('neu')
+  })
+
   it('onSave liefert false: Anzeige springt auf gespeicherten Wert, Unmount schreibt nicht erneut', async () => {
     const onSave = vi.fn(() => false)
     const { input, unmount } = setup('alt', onSave)
