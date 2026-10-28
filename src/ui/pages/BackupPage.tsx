@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../storage/repository'
 import {
@@ -10,6 +10,7 @@ import {
   restoreSafetyCopy,
   type BackupFile,
 } from '../../storage/backup'
+import { isStoragePersisted } from '../../storage/persistence'
 import { downloadFile } from './downloadFile'
 
 type Difference = Awaited<ReturnType<typeof describeDifference>>
@@ -36,6 +37,13 @@ export default function BackupPage() {
   const [message, setMessage] = useState<Message | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [confirmRestore, setConfirmRestore] = useState(false)
+  const [persisted, setPersisted] = useState<boolean | undefined>(undefined)
+
+  useEffect(() => {
+    let active = true
+    void isStoragePersisted().then((p) => { if (active) setPersisted(p) })
+    return () => { active = false }
+  }, [])
 
   const dirty = useLiveQuery(async () => (await db.meta.get('dirty'))?.value === true)
   const lastExportAt = useLiveQuery(async () => {
@@ -136,6 +144,9 @@ export default function BackupPage() {
 
       <div className="backup-status">
         <p>{lastExportAt ? `Letzter Export: ${formatDateTime(lastExportAt)}` : lastExportAt === null ? 'Noch nie exportiert' : 'Lädt …'}</p>
+        {persisted !== undefined && (
+          <p>{persisted ? 'Speicher: dauerhaft gesichert' : 'Speicher: vom Browser nicht garantiert – exportiere regelmäßig'}</p>
+        )}
         {dirty && (
           <p role="status" className="notice warn">
             Ungesicherte Änderungen: Seit dem letzten Export wurde etwas geändert. Exportiere, um sie zu sichern.

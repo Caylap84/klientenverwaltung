@@ -211,6 +211,35 @@ describe('BackupPage', () => {
     expect(await screen.findByText(/Ungesicherte Änderungen/)).toBeInTheDocument()
   })
 
+  describe('Speicherstatus', () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'storage')
+    const mockStorage = (value: unknown) => Object.defineProperty(navigator, 'storage', { value, configurable: true })
+    afterEach(() => {
+      if (original) Object.defineProperty(navigator, 'storage', original)
+      else delete (navigator as unknown as Record<string, unknown>).storage
+    })
+
+    it('dauerhaft gesichert', async () => {
+      mockStorage({ persisted: vi.fn(async () => true) })
+      renderPage()
+      expect(await screen.findByText('Speicher: dauerhaft gesichert')).toBeInTheDocument()
+    })
+
+    it('nicht garantiert', async () => {
+      mockStorage({ persisted: vi.fn(async () => false) })
+      renderPage()
+      expect(await screen.findByText('Speicher: vom Browser nicht garantiert – exportiere regelmäßig')).toBeInTheDocument()
+    })
+
+    it('ohne API keine Zeile', async () => {
+      mockStorage(undefined)
+      renderPage()
+      await screen.findByText('Noch nie exportiert')
+      await new Promise((r) => setTimeout(r, 20))
+      expect(screen.queryByText(/^Speicher:/)).not.toBeInTheDocument()
+    })
+  })
+
   it('Export-Fehler wird auf Deutsch als Alert gezeigt', async () => {
     vi.spyOn(db.clients, 'toArray').mockRejectedValue(new Error('boom'))
     const user = userEvent.setup()
