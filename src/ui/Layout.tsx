@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import UpdateBanner from './UpdateBanner'
 
 const links = [
   { to: '/', label: 'Übersicht', end: true },
@@ -20,6 +21,7 @@ export default function Layout() {
         </ul>
       </nav>
       <main className="main">
+        <UpdateBanner />
         <Outlet />
       </main>
     </div>

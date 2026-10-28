@@ -8,11 +8,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      // Registration is injected only into production builds; guarded for
-      // environments without service workers (file://, some webviews).
-      injectRegister: 'inline',
-      includeAssets: ['favicon.svg'],
+      registerType: 'prompt',
+      // Registration happens in src/pwa/registerPwa.ts (production only);
+      // updates are user-initiated via UpdateBanner.
+      injectRegister: false,
       manifest: {
         name: 'Klientenverwaltung',
         short_name: 'Klienten',
@@ -36,7 +35,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
+        // The plugin adds the manifest and its icons to the precache itself,
+        // so png/webmanifest are left out here to avoid duplicate entries.
+        globPatterns: ['**/*.{js,css,html,svg,ico}'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },

@@ -11,3 +11,7 @@ createRoot(document.getElementById('root')!).render(
     </HashRouter>
   </StrictMode>,
 )
+
+if (import.meta.env.PROD) {
+  void import('./pwa/registerPwa').then((m) => m.registerPwa())
+}
