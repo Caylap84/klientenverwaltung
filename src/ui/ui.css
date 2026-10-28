@@ -88,3 +88,20 @@ textarea { font: inherit; color: inherit; background: var(--surface); padding: 0
 .log-entry, .pdf-row { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; }
 .pdf-row strong { overflow-wrap: anywhere; }
 .pdf-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+
+.month-nav { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0 1rem; }
+.month-nav h2 { margin: 0; font-size: 1.2rem; min-width: 9rem; text-align: center; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin: 0 0 1.5rem; }
+.stat { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 0.7rem 0.9rem; }
+.stat dt { font-size: 0.85rem; color: var(--muted); }
+.stat dd { margin: 0.15rem 0 0; font-size: 1.3rem; font-weight: 600; }
+.open-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.open-list li { display: grid; grid-template-columns: 1fr auto; gap: 0.4rem 1rem; align-items: center; padding: 0.7rem 1rem; }
+.open-list li + li { border-top: 1px solid var(--border); }
+.open-list .amount { text-align: right; font-variant-numeric: tabular-nums; }
+.open-list button { grid-column: 1 / -1; justify-self: start; }
+@media (min-width: 700px) {
+  .stats { grid-template-columns: repeat(4, 1fr); }
+  .open-list li { grid-template-columns: 1fr auto auto; }
+  .open-list button { grid-column: auto; }
+}

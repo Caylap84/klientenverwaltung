@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import Layout from './Layout'
 import ClientListPage from './pages/ClientListPage'
 import ClientPage from './pages/ClientPage'
+import OverviewPage from './pages/OverviewPage'
 import './ui.css'
 
 function Placeholder({ title }: { title: string }) {
@@ -17,7 +18,7 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Placeholder title="Übersicht" />} />
+        <Route index element={<OverviewPage />} />
         <Route path="klienten" element={<ClientListPage />} />
         <Route path="klienten/:id" element={<ClientPage />} />
         <Route path="sicherung" element={<Placeholder title="Sicherung" />} />

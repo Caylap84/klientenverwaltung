@@ -1,21 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createContract, db } from '../../storage/repository'
-import type { Client, Contract } from '../../domain/types'
+import type { Client } from '../../domain/types'
 import ContractCard from './ContractCard'
-
-function order(a: Contract, b: Contract): number {
-  // Verträge ohne Startmonat stehen unten (neu angelegte Verträge erscheinen so am Ende)
-  if (a.startMonth !== b.startMonth) {
-    if (a.startMonth === '') return 1
-    if (b.startMonth === '') return -1
-    return a.startMonth < b.startMonth ? -1 : 1
-  }
-  return a.id < b.id ? -1 : 1
-}
+import { contractOrder } from './contractFields'
 
 export default function ContractsTab({ client }: { client: Client }) {
   const contracts = useLiveQuery(
-    async () => (await db.contracts.where('clientId').equals(client.id).toArray()).sort(order),
+    async () => (await db.contracts.where('clientId').equals(client.id).toArray()).sort(contractOrder),
     [client.id],
   )
   if (contracts === undefined) return <p>Lädt …</p>

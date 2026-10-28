@@ -37,3 +37,13 @@ export async function patchContract(
     if (patch) await updateContract(id, patch)
   })
 }
+
+export function contractOrder(a: Contract, b: Contract): number {
+  // Verträge ohne Startmonat stehen unten (neu angelegte Verträge erscheinen so am Ende)
+  if (a.startMonth !== b.startMonth) {
+    if (a.startMonth === '') return 1
+    if (b.startMonth === '') return -1
+    return a.startMonth < b.startMonth ? -1 : 1
+  }
+  return a.id < b.id ? -1 : 1
+}
