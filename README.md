@@ -4,6 +4,7 @@ Kleine Offline-App (PWA) zur Verwaltung von Klienten im Stimmtraining: Stammdate
 Laufzeit und Preis, geplante und erledigte Stunden, Honorareingänge pro Monat, Notizen,
 Dokumentation und PDFs. Alle Daten liegen nur lokal im Browser (IndexedDB) des jeweiligen Geräts.
 Für Windows gibt es zusätzlich eine EXE (Tauri), siehe [docs/windows-build.md](docs/windows-build.md).
+Die Web-App wird über GitHub Pages veröffentlicht, siehe [docs/veroeffentlichen.md](docs/veroeffentlichen.md).
 
 ## Entwicklung
 
